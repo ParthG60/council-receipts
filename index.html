@@ -59,7 +59,7 @@
 
     <section class="panel" id="panel-money">
       <h2>Where the budget goes</h2>
-      <p class="lede" id="money-lede">What your council puts into each service — £ per resident (staff + running costs).</p>
+      <p class="lede" id="money-lede">£ per resident going into each service (staff plus running costs).</p>
       <div class="toggle-group" id="money-toggle">
         <button class="toggle-btn active" data-view="absolute">£ per resident</button>
         <button class="toggle-btn" data-view="share">% share</button>
@@ -90,13 +90,13 @@
     <details class="panel" id="panel-methodology">
       <summary>Methodology</summary>
       <div id="methodology-text">
-        <p><strong>What it is.</strong> English councils across the political spectrum — pick one, see what it talks about, where its money goes, and how it compares.</p>
-        <p><strong>What they talk about.</strong> Meeting minutes come from the Council Gateway API (Poteris), covering October 2024 – March 2025 — deliberately matched to the 2024-25 financial year so discussion and spend cover the same period. Each document is classified by keyword counting against a fixed taxonomy. A council's discussion share for a topic = that topic's keyword hits ÷ all topic hits across its minutes. Statutory notices (licensing, road closures) are filtered out — they're procedural, not deliberation.</p>
-        <p><strong>Where the money goes.</strong> Spend is from the MHCLG Revenue Outturn 2024-25, gross expenditure by service (staff + running costs), converted to £ per resident. Gross measures the resources a council actually pours into each service. The alternative — net expenditure, i.e. gross minus fees-and-charges income — measures the burden on council tax instead, and understates activity wherever charging is heavy: on a net basis Camden's £37m-a-year roads operation would show up as negative, because parking income (£57m) more than covers it. The trade-off cuts the other way too: gross includes activity funded by fees and charges, not just your council tax — Bath's Roman Baths spend, for instance, is more than paid for by admissions.</p>
+        <p><strong>What it is.</strong> 15 English councils across the political spectrum. Pick one to see what it talks about, where its money goes, and how it compares.</p>
+        <p><strong>What they talk about.</strong> Meeting minutes come from the Council Gateway API (Poteris), covering October 2024 – March 2025, matched to the 2024-25 financial year so discussion and spend cover the same period. Each document is classified by keyword counting against a fixed taxonomy. A council's discussion share for a topic = that topic's keyword hits ÷ all topic hits across its minutes. Statutory notices (licensing, road closures) are filtered out.</p>
+        <p><strong>Where the money goes.</strong> Spend is from the MHCLG Revenue Outturn 2024-25, gross expenditure by service (staff + running costs), converted to £ per resident. Gross measures the resources a council actually pours into each service. The alternative, net expenditure (gross minus fees-and-charges income), measures the burden on council tax instead, and understates services that charge heavily: on a net basis Camden's £37m-a-year roads operation would show up as negative, because parking income (£57m) more than covers it. One caveat with gross: it includes activity funded by fees and charges as well as council tax. Bath's Roman Baths spend, for instance, is more than covered by admissions.</p>
         <h3>Taxonomy</h3>
         <table id="taxonomy-table" class="taxonomy"></table>
         <p><strong>Scorecard.</strong> GCSE Attainment 8 (DfE, 2023/24, higher is better), CO₂ per person (DESNZ, 2024, lower is better), rent affordability = rent ÷ pay (ONS/ASHE, lower is better), recorded crime per 1,000 (ONS/Home Office, lower is better), and — where landed — A-road delay in secs/vehicle-mile (DfT congestion data, lower is better). Heatmap colour and league-table sort are by rank among the councils on this site, not the raw value.</p>
-        <p><strong>Limitations.</strong> Bristol has no minutes in the Gateway before April 2026, so it's excluded from discussion panels for the matched year. Kent and Lancashire are county councils — they don't run every service, and some scorecard figures are county-wide proxies (flagged where used). Recorded crime reflects reporting as well as crime. Keyword classification is crude — it measures what minutes mention, not the quality of debate. Discussion (Oct 2024–Mar 2025) predates some councils' 2025/2026 elections, so their talk reflects the administration in office at the time — the comparison against the same-year spend stays internally consistent.</p>
+        <p><strong>Limitations.</strong> Bristol has no minutes in the Gateway before April 2026, so it's excluded from discussion panels for the matched year. Kent and Lancashire are county councils — they don't run every service, and some scorecard figures are county-wide proxies (flagged where used). Recorded crime reflects reporting as well as crime. Keyword classification is crude: it counts what minutes mention. Discussion (Oct 2024–Mar 2025) predates some councils' 2025/2026 elections, so their talk reflects the administration in office at the time; the same-year spend does too, which keeps the comparison consistent.</p>
       </div>
     </details>
 
@@ -133,26 +133,37 @@
   <section id="tab-feedback" class="tab-panel">
 
     <section class="panel">
-      <h2>This is a prototype — help shape it</h2>
-      <p class="lede">Built in a day at the Campaign Lab hack day. The obvious next extensions, roughly in order:</p>
+      <h2>What's next</h2>
+      <p class="lede">Built in a day at Campaign Lab. Next, roughly in order:</p>
       <ol class="roadmap">
-        <li><strong>All councils.</strong> Expand from 15 to every English council in the Council Gateway (~320).</li>
-        <li><strong>Better scorecard metrics.</strong> The current five are a starting point, not a verdict.</li>
-        <li><strong>Council voting outcomes.</strong> What actually got decided, not just what got discussed.</li>
-        <li><strong>Financial health indicators.</strong> Reserves, debt servicing, Section 114 risk — the council's own receipts.</li>
+        <li><strong>All councils.</strong> From 15 to every English council in the Council Gateway (~320). In progress.</li>
+        <li><strong>Better scorecard metrics.</strong> Five was what fit in a day.</li>
+        <li><strong>Voting outcomes.</strong> What got decided, and who voted for it.</li>
+        <li><strong>Financial health.</strong> Reserves, debt servicing, Section 114 risk.</li>
       </ol>
-      <p>But the roadmap is up for grabs. Especially welcome:</p>
+      <p>Also welcome:</p>
       <ul class="feedback-wants">
-        <li>Comments on anything — what's confusing, what's missing, what's wrong.</li>
-        <li>Feedback on the data viz — what misleads, what could be clearer.</li>
-        <li>Interesting datasets worth folding in.</li>
-        <li>New views or questions this data could answer.</li>
+        <li>Anything confusing, missing or wrong.</li>
+        <li>Charts that mislead, or could be clearer.</li>
+        <li>Datasets worth adding.</li>
+        <li>Questions this data could answer but doesn't yet.</li>
       </ul>
       <div class="feedback-actions">
         <a class="feedback-btn" href="https://github.com/ParthG60/council-receipts/issues/new" target="_blank" rel="noopener">Open a GitHub issue</a>
         <a class="feedback-btn" href="mailto:parthgoyal60@gmail.com?subject=Council%20Receipts%20feedback">Email me</a>
       </div>
       <p class="caption">Code and data are public: <a href="https://github.com/ParthG60/council-receipts" target="_blank" rel="noopener">github.com/ParthG60/council-receipts</a></p>
+    </section>
+
+    <section class="panel">
+      <h2>Take the charts and data</h2>
+      <p>Every chart has a <span class="mono-inline">⤓ png</span> button in its corner. Downloads are 2× resolution on the receipt background. Reuse freely; a link back is appreciated.</p>
+      <p>The full dataset behind the site is one JSON file: every council's discussion shares, spend per service, demographics and scorecard values.</p>
+      <div class="feedback-actions">
+        <a class="feedback-btn alt" href="data.json" download="council-receipts.json">Download the data (JSON)</a>
+        <a class="feedback-btn alt" href="https://github.com/ParthG60/council-receipts" target="_blank" rel="noopener">Build code on GitHub</a>
+      </div>
+      <p class="caption">Underlying sources are all open data: MHCLG Revenue Outturn, ONS/Nomis, DfE, DESNZ, DfT, Council Gateway (Poteris), Democracy Club.</p>
     </section>
 
   </section>
