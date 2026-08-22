@@ -18,33 +18,7 @@ Plotly.newPlot = (id, traces, layout = {}, config) =>
     plot_bgcolor: "rgba(0,0,0,0)",
     ...layout,
     font: { ...BASE_FONT, ...(layout.font || {}) },
-  }, config).then((gd) => { addSaveButton(gd); return gd; });
-
-/* Every chart gets a corner button that downloads it as a PNG on the receipt
-   background (the on-screen background is transparent, which exports badly). */
-function slug(s) { return (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); }
-
-function addSaveButton(gd) {
-  const old = gd.querySelector(".chart-save");
-  if (old) old.remove();
-  const btn = document.createElement("button");
-  btn.className = "chart-save";
-  btn.textContent = "⤓ png";
-  btn.title = "Download this chart as a PNG";
-  btn.onclick = async () => {
-    const council = gd.closest("#tab-council") ? slug(el("council-select").value) + "-" : "";
-    await Plotly.relayout(gd, { paper_bgcolor: "#fdfbf4", plot_bgcolor: "#fdfbf4" });
-    try {
-      await Plotly.downloadImage(gd, {
-        format: "png", scale: 2,
-        filename: `council-receipts-${council}${gd.id.replace(/-chart$/, "")}`,
-      });
-    } finally {
-      Plotly.relayout(gd, { paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)" });
-    }
-  };
-  gd.appendChild(btn);
-}
+  }, config);
 
 /* RSX service names are too long for a chart margin — short display labels,
    two lines where still long. Keyed by the exact RSX name in data.json. */
