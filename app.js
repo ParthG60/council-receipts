@@ -605,9 +605,9 @@ window.addEventListener("DOMContentLoaded", () => {
       DATA = data;
       initCouncilSelect();
       renderNational();
-      if (new URLSearchParams(location.search).get("tab") === "national") {
-        document.querySelector('.tab[data-tab="national"]').click();
-      }
+      const tabParam = new URLSearchParams(location.search).get("tab");
+      const tabBtn = tabParam && document.querySelector(`.tab[data-tab="${tabParam}"]`);
+      if (tabBtn) tabBtn.click();
     })
     .catch((err) => {
       document.querySelector(".container").innerHTML =

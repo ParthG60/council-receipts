@@ -451,6 +451,38 @@ table.league th.sortable:hover { color: var(--ink); }
 table.league th.sorted { color: var(--stamp); }
 table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
 
+/* ------------------------------------------------------------ feedback --- */
+.roadmap, .feedback-wants {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.7;
+  margin: 10px 0 18px;
+  padding-left: 1.6em;
+}
+
+.roadmap li, .feedback-wants li { margin-bottom: 6px; }
+
+.feedback-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 18px 0 14px;
+}
+
+.feedback-btn {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  color: var(--receipt);
+  background: var(--stamp);
+  border: 1px solid var(--stamp);
+  padding: 9px 16px;
+}
+
+.feedback-btn:hover { background: var(--ink); border-color: var(--ink); }
+
 .empty-note {
   font-family: var(--mono);
   font-size: 0.8rem;
