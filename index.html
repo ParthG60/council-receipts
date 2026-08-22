@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Council Receipts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <p class="kicker">★ Campaign Lab hack day · 15 English councils · open data ★</p>
+    <h1>Council Receipts</h1>
+    <p class="tagline">What your council talks about, and where the money goes. <em>Show me the receipts.</em></p>
+    <nav class="tabs">
+      <button class="tab active" data-tab="council">Your council</button>
+      <button class="tab" data-tab="national">National</button>
+    </nav>
+  </header>
+
+  <!-- ============================== COUNCIL TAB ============================== -->
+  <section id="tab-council" class="tab-panel active">
+
+    <div class="council-picker">
+      <select id="council-select" aria-label="Choose a council"></select>
+      <div id="election-banner"></div>
+      <div id="control-line" class="control-line"></div>
+    </div>
+
+    <div class="grid-2">
+      <section class="panel" id="panel-population">
+        <h2>Population</h2>
+        <div class="big-number" id="population-headline"></div>
+        <p class="caption">Source: ONS mid-2024 population estimates.</p>
+        <div class="key-line" id="race-key"></div>
+        <div id="race-chart"></div>
+        <p class="caption">Ethnicity, Census 2021 (ONS).</p>
+      </section>
+
+      <section class="panel" id="panel-age">
+        <h2 id="age-heading">Age profile vs England</h2>
+        <div class="key-line" id="age-key"></div>
+        <div id="age-chart"></div>
+        <p class="caption">Source: ONS mid-2024 population estimates.</p>
+      </section>
+    </div>
+
+    <section class="panel" id="panel-topics">
+      <h2>What they talk about</h2>
+      <div class="key-line" id="topics-key"></div>
+      <div id="topics-chart"></div>
+      <p class="caption">Source: Council Gateway API meeting minutes, FY2024-25 (Oct 2024–Mar 2025, matched to the spend year below). Share of all topic keyword hits.</p>
+    </section>
+
+    <section class="panel" id="panel-money">
+      <h2>Where the budget goes</h2>
+      <p class="lede" id="money-lede">What your council puts into each service — £ per resident (staff + running costs).</p>
+      <div class="toggle-group" id="money-toggle">
+        <button class="toggle-btn active" data-view="absolute">£ per resident</button>
+        <button class="toggle-btn" data-view="share">% share</button>
+      </div>
+      <div class="key-line" id="money-key"></div>
+      <div id="money-chart"></div>
+      <p class="caption" id="money-caption">Source: MHCLG Revenue Outturn 2024-25. Includes activity funded by fees and charges, not just council tax.</p>
+    </section>
+
+    <section class="panel" id="panel-tvs">
+      <h2>Do they talk about what they spend on?</h2>
+      <div class="key-line" id="tvs-key"></div>
+      <div id="tvs-chart"></div>
+      <p class="caption" id="tvs-caption"></p>
+    </section>
+
+    <section class="panel" id="panel-scorecard">
+      <h2>Scorecard</h2>
+      <div id="scorecard-heat" class="heat-strip"></div>
+      <p class="caption">Colour = rank among the councils on this site (green better, magenta worse). Sources: DfE, DESNZ, ONS/Home Office, ONS rents vs ASHE pay.</p>
+    </section>
+
+    <section class="panel" id="panel-links">
+      <h2>Read up on it</h2>
+      <ul id="reading-links"></ul>
+    </section>
+
+    <details class="panel" id="panel-methodology">
+      <summary>Methodology</summary>
+      <div id="methodology-text">
+        <p><strong>What it is.</strong> English councils across the political spectrum — pick one, see what it talks about, where its money goes, and how it compares.</p>
+        <p><strong>What they talk about.</strong> Meeting minutes come from the Council Gateway API (Poteris), covering October 2024 – March 2025 — deliberately matched to the 2024-25 financial year so discussion and spend cover the same period. Each document is classified by keyword counting against a fixed taxonomy. A council's discussion share for a topic = that topic's keyword hits ÷ all topic hits across its minutes. Statutory notices (licensing, road closures) are filtered out — they're procedural, not deliberation.</p>
+        <p><strong>Where the money goes.</strong> Spend is from the MHCLG Revenue Outturn 2024-25, gross expenditure by service (staff + running costs), converted to £ per resident. Gross measures the resources a council actually pours into each service. The alternative — net expenditure, i.e. gross minus fees-and-charges income — measures the burden on council tax instead, and understates activity wherever charging is heavy: on a net basis Camden's £37m-a-year roads operation would show up as negative, because parking income (£57m) more than covers it. The trade-off cuts the other way too: gross includes activity funded by fees and charges, not just your council tax — Bath's Roman Baths spend, for instance, is more than paid for by admissions.</p>
+        <h3>Taxonomy</h3>
+        <table id="taxonomy-table" class="taxonomy"></table>
+        <p><strong>Scorecard.</strong> GCSE Attainment 8 (DfE, 2023/24, higher is better), CO₂ per person (DESNZ, 2024, lower is better), rent affordability = rent ÷ pay (ONS/ASHE, lower is better), recorded crime per 1,000 (ONS/Home Office, lower is better), and — where landed — A-road delay in secs/vehicle-mile (DfT congestion data, lower is better). Heatmap colour and league-table sort are by rank among the councils on this site, not the raw value.</p>
+        <p><strong>Limitations.</strong> Bristol has no minutes in the Gateway before April 2026, so it's excluded from discussion panels for the matched year. Kent and Lancashire are county councils — they don't run every service, and some scorecard figures are county-wide proxies (flagged where used). Recorded crime reflects reporting as well as crime. Keyword classification is crude — it measures what minutes mention, not the quality of debate. Discussion (Oct 2024–Mar 2025) predates some councils' 2025/2026 elections, so their talk reflects the administration in office at the time — the comparison against the same-year spend stays internally consistent.</p>
+      </div>
+    </details>
+
+  </section>
+
+  <!-- ============================== NATIONAL TAB ============================== -->
+  <section id="tab-national" class="tab-panel">
+
+    <section class="panel panel-wide" id="panel-party">
+      <h2>Where the budget goes, by party</h2>
+      <div class="key-line" id="party-key"></div>
+      <div id="party-chart"></div>
+      <p class="caption" id="party-caption">Equal-weighted mean spend share by topic, across councils currently controlled by each party. Source: MHCLG Revenue Outturn 2024-25.</p>
+      <p class="caption">Small-n caveat: most buckets are 2–4 councils — this reflects those councils' spending, not the party nationally.</p>
+    </section>
+
+    <section class="panel panel-wide" id="panel-party-discussion">
+      <h2>What they talk about, by party</h2>
+      <div class="key-line" id="party-discussion-key"></div>
+      <div id="party-discussion-chart"></div>
+      <p class="caption">Equal-weighted mean discussion share by topic, across councils currently controlled by each party. Source: Council Gateway API minutes, FY2024-25.</p>
+    </section>
+
+    <section class="panel panel-wide" id="panel-league">
+      <h2>League table</h2>
+      <p class="caption">Click a column header to sort.</p>
+      <div id="league-table-wrap"></div>
+      <p class="caption" id="league-caption"></p>
+    </section>
+
+  </section>
+
+  <footer class="receipt-footer">
+    <p>*** thank you for scrutinising your council ***</p>
+    <p class="receipt-footer-sub">MHCLG · ONS · DfE · DESNZ · DfT · Council Gateway (Poteris) · Democracy Club</p>
+  </footer>
+
+</div>
+
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js" defer></script>
+<script src="app.js" defer></script>
+</body>
+</html>
