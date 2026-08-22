@@ -492,6 +492,10 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
 
 .mono-inline { font-family: var(--mono); font-size: 0.85em; }
 
+/* comments (giscus) */
+#panel-comments .giscus { margin-top: 14px; }
+#panel-comments p { max-width: 60ch; }
+
 /* corner PNG-export button injected on every Plotly chart */
 .js-plotly-plot { position: relative; }
 
