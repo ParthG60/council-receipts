@@ -107,11 +107,19 @@ function initTabs() {
 
 // ------------------------------------------------------- council view ---
 function initCouncilSelect() {
-  const select = el("council-select");
+  const input = el("council-input");
+  const list = el("council-list");
   const names = Object.keys(DATA.councils).sort();
-  select.innerHTML = names.map((n) => `<option value="${n}">${n}</option>`).join("");
-  select.addEventListener("change", () => renderCouncil(select.value));
-  renderCouncil(names[0]);
+  list.innerHTML = names.map((n) => `<option value="${n}"></option>`).join("");
+
+  input.addEventListener("input", () => {
+    if (DATA.councils[input.value]) renderCouncil(input.value);
+  });
+
+  const deepLink = new URLSearchParams(location.search).get("council");
+  const start = deepLink && DATA.councils[deepLink] ? deepLink : names[0];
+  input.value = start;
+  renderCouncil(start);
 }
 
 function renderCouncil(name) {
@@ -286,9 +294,8 @@ function renderTopicsChart(c, name) {
   const topics = Object.keys(c.topic_share).sort((a, b) => c.topic_share[b] - c.topic_share[a]);
   const councilVals = topics.map((t) => c.topic_share[t]);
   const avgVals = topics.map((t) => DATA.corpus_avg_topic_share[t] ?? 0);
-  const n = Object.keys(DATA.councils).length;
 
-  el("topics-key").innerHTML = swatch(ACCENT, name) + " &nbsp; " + swatch(GREY, `${n}-council average`);
+  el("topics-key").innerHTML = swatch(ACCENT, name) + " &nbsp; " + swatch(GREY, "England average");
 
   Plotly.newPlot(
     "topics-chart",
@@ -340,11 +347,10 @@ function drawMoneyAbsolute(c) {
   const labels = services.map(shortService);
   const values = c.money.map((m) => m.gbp_per_resident);
   const medians = services.map((s) => (DATA.money_median_per_resident || {})[s]);
-  const n = DATA.money_median_n;
   const hasMedian = medians.some((v) => v != null);
 
   el("money-key").innerHTML = hasMedian
-    ? swatch(ACCENT, "This council") + " &nbsp; " + swatch(GREY, `${n}-council median`)
+    ? swatch(ACCENT, "This council") + " &nbsp; " + swatch(GREY, "England median")
     : swatch(ACCENT, "This council");
 
   const traces = [
@@ -433,20 +439,37 @@ function renderTalkVsSpend(c) {
   );
 }
 
+function ordinal(n) {
+  const s = ["th", "st", "nd", "rd"], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+// Deprivation colour law: decile 1 (most deprived) = magenta/bad, decile 10
+// (least deprived) = green/good — the inverse of rankColor's rank-based scale.
+function decileColor(decile) {
+  if (decile == null) return "#f0f0f0";
+  const t = (10 - decile) / 9; // 0 = least deprived (green/good), 1 = most deprived (magenta/bad)
+  const GOOD = "#4d9221", MID = "#f7f7f7", BAD = "#c51b7d";
+  return t < 0.5 ? lerpHex(GOOD, MID, t * 2) : lerpHex(MID, BAD, (t - 0.5) * 2);
+}
+
 function renderScorecard(c) {
   const hasData = c.scorecard && c.scorecard.length;
   showPanel("panel-scorecard", !!hasData);
   if (!hasData) return;
+  const tierLabel = c.tier === "upper" ? "county councils" : "districts/unitaries";
   el("scorecard-heat").innerHTML = c.scorecard
     .map((m) => {
-      const bg = rankColor(m.rank, m.n);
+      const bg = decileColor(m.decile);
       const fg = textOnColor(bg);
-      const proxyTxt = m.proxy ? " *county-wide figure" : "";
-      const rankTxt = m.rank != null ? `rank ${m.rank} / ${m.n}` : "";
+      const decileTxt = m.decile != null ? `Decile ${m.decile} of 10` : "—";
+      const ordTxt = m.decile != null ? `${ordinal(m.decile)} most-deprived tenth` : "";
+      const rankTxt = m.rank != null ? `rank ${m.rank} of ${m.pool_n} ${tierLabel}` : "";
+      const prop10Txt = m.prop10 != null ? `${Math.round(m.prop10 * 100)}% of areas in England's most-deprived 10%` : "";
       return `<div class="heat-cell" style="background:${bg};color:${fg}">
-        <div class="heat-label">${m.label}${proxyTxt}</div>
-        <div class="heat-value">${m.value}</div>
-        <div class="heat-sub">${rankTxt}${m.england_value != null ? " · England " + m.england_value : ""}</div>
+        <div class="heat-label">${m.label}</div>
+        <div class="heat-value">${decileTxt}</div>
+        <div class="heat-sub">${ordTxt}${rankTxt ? " · " + rankTxt : ""}${prop10Txt ? " · " + prop10Txt : ""}</div>
       </div>`;
     })
     .join("");
@@ -522,22 +545,30 @@ function renderPartyChart(chartId, keyId, groups, shareKey) {
 }
 
 let leagueSort = null;
+let leagueTopN = 10;
 
 function renderLeagueTable() {
   const lt = DATA.league_table;
-  const hasData = lt && lt.metrics && lt.metrics.length;
+  const hasData = lt && lt.domains && lt.domains.length;
   if (!hasData) {
     el("league-table-wrap").innerHTML = `<p class="empty-note">Scorecard data not available yet.</p>`;
     el("league-caption").textContent = "";
+    showPanel("league-toggle", false);
     return;
   }
-  const hasTraffic = lt.metrics.includes("aroad_delay");
-  if (!leagueSort) {
-    leagueSort = { col: hasTraffic ? "aroad_delay" : "council", asc: true };
-  }
-  el("league-caption").textContent = hasTraffic
-    ? "Sorted best-first on the traffic column by default. Lower is better throughout except Attainment 8 (higher is better)."
-    : "Lower is better throughout except Attainment 8 (higher is better). Click a column to sort.";
+  if (!leagueSort) leagueSort = { col: "IMD_score", asc: false };
+  el("league-caption").textContent =
+    "Sorted most-deprived first by default. Decile colour: magenta = more deprived, green = less. Ranks and deciles are within tier — county councils out of 153, districts/unitaries out of 296 — so don't compare deciles across tiers.";
+
+  const toggle = el("league-toggle");
+  toggle.querySelectorAll(".toggle-btn").forEach((btn) => {
+    btn.classList.toggle("active", Number(btn.dataset.n) === leagueTopN);
+    btn.onclick = () => {
+      leagueTopN = Number(btn.dataset.n);
+      drawLeagueTable(lt);
+    };
+  });
+
   drawLeagueTable(lt);
 }
 
@@ -558,27 +589,31 @@ function sortedLeagueRows(lt) {
 function drawLeagueTable(lt) {
   const cols = [
     { key: "council", label: "Council" },
-    { key: "party", label: "Party" },
-    ...lt.metrics.map((m) => ({ key: m, label: lt.metric_labels[m] || m })),
+    { key: "control", label: "Control" },
+    ...lt.domains.map((d) => ({ key: d, label: lt.domain_labels[d] || d })),
   ];
-  const rows = sortedLeagueRows(lt);
+  const rows = sortedLeagueRows(lt).slice(0, leagueTopN);
   const rowsHtml = rows
     .map((r, i) => {
       const cells = cols.map((col) => {
-        if (col.key === "council" || col.key === "party") return r[col.key] ?? "—";
-        const v = r[col.key];
-        return v == null ? "—" : v;
+        if (col.key === "council" || col.key === "control") return `<td>${r[col.key] ?? "—"}</td>`;
+        const decile = r[col.key + "_decile"];
+        if (decile == null) return `<td>—</td>`;
+        const bg = decileColor(decile);
+        const fg = textOnColor(bg);
+        return `<td><span class="decile-chip" style="background:${bg};color:${fg}">${decile}</span></td>`;
       });
-      return `<tr><td class="rank-cell">${i + 1}</td>${cells.map((c) => `<td>${c}</td>`).join("")}</tr>`;
+      return `<tr><td class="rank-cell">${i + 1}</td>${cells.join("")}</tr>`;
     })
     .join("");
   const headHtml =
     `<th class="rank-cell">#</th>` +
     cols
       .map((col) => {
-        const active = leagueSort.col === col.key;
+        const sortKey = col.key === "council" || col.key === "control" ? col.key : col.key + "_score";
+        const active = leagueSort.col === sortKey;
         const arrow = active ? (leagueSort.asc ? " ▲" : " ▼") : "";
-        return `<th data-col="${col.key}" class="sortable${active ? " sorted" : ""}">${col.label}${arrow}</th>`;
+        return `<th data-col="${sortKey}" class="sortable${active ? " sorted" : ""}">${col.label}${arrow}</th>`;
       })
       .join("");
   el("league-table-wrap").innerHTML = `<div style="overflow-x:auto"><table class="league">
@@ -590,7 +625,7 @@ function drawLeagueTable(lt) {
     th.addEventListener("click", () => {
       const col = th.dataset.col;
       if (leagueSort.col === col) leagueSort.asc = !leagueSort.asc;
-      else leagueSort = { col, asc: true };
+      else leagueSort = { col, asc: col !== "IMD_score" && !col.endsWith("_score") };
       drawLeagueTable(lt);
     });
   });

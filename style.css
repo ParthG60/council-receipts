@@ -124,7 +124,7 @@ header .tagline em {
   text-align: center;
 }
 
-select {
+#council-input {
   width: 360px;
   max-width: 100%;
   font-family: var(--serif);
@@ -136,11 +136,12 @@ select {
   background: var(--receipt);
   color: var(--ink);
   margin-bottom: 12px;
-  cursor: pointer;
   box-shadow: 3px 3px 0 rgba(38, 36, 32, 0.15);
 }
 
-select:focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
+#council-input::placeholder { color: var(--faint); font-weight: 400; }
+
+#council-input:focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
 
 .control-line {
   font-family: var(--mono);
@@ -213,6 +214,7 @@ select:focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
 .panel:nth-of-type(5) { animation-delay: 0.2s; }
 
 .panel-wide { padding-left: 14px; padding-right: 14px; }
+.panel-wide h2, .panel-wide .caption, .panel-wide .key-line, .panel-wide .toggle-group { margin-left: 12px; margin-right: 12px; }
 .panel-wide h2, .panel-wide .caption, .panel-wide .key-line { padding-left: 12px; padding-right: 12px; }
 
 .panel h2, details#panel-methodology summary {
@@ -451,6 +453,17 @@ table.league th.sortable:hover { color: var(--ink); }
 table.league th.sorted { color: var(--stamp); }
 table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
 
+.decile-chip {
+  display: inline-block;
+  min-width: 1.8em;
+  text-align: center;
+  padding: 2px 5px;
+  font-weight: 600;
+  border: 1px solid rgba(38, 36, 32, 0.12);
+}
+
+#league-toggle { margin-bottom: 12px; }
+
 /* ------------------------------------------------------------ feedback --- */
 .roadmap, .feedback-wants {
   font-family: var(--mono);
@@ -532,6 +545,6 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
   .container { padding: 24px 14px 40px; }
   .grid-2 { grid-template-columns: 1fr; gap: 34px; }
   .heat-strip { grid-template-columns: 1fr 1fr; }
-  select { width: 100%; }
+  #council-input { width: 100%; }
   header h1 { font-size: 2.5rem; }
 }

@@ -1,15 +1,24 @@
-"""Bake data/*.csv (+ data_fy1..7/*.csv) into site/data.json for the static HTML site.
+"""Bake the all-England corpus + reference data into site/data.json.
 
-Usage: python site/build.py   (run from anywhere — paths resolve off this file).
+v5 (all-England): the site now covers every English council in the Council Gateway
+(282 = 267 harvested into data_england/c<id>/ + the original 15 in data_fy1..7/).
+The universal join key is the ONS LAD code. data_england/scorecard_imd.csv is the
+master registry (one row per council per IMD domain; distinct ons_code = the 282).
 
-v4: the 2026 YTD corpus (data/doc_topics.csv) is retired from the UI. "What they
-talk about" and "talk vs spend" both now read the matched FY2024-25 corpus —
-the union of data_fy1..7/doc_topics.csv. New councils land purely via new
-data_fyN/ folders; nothing here needs editing when they do.
+Sources, all joined on ons_code unless noted:
+  - discussion corpus : data_fy1..7/doc_topics.csv + data_england/c*/doc_topics.csv
+                        (joined council_id -> ons_code; duplicate gateway ids for
+                        the same ons_code are summed)
+  - finance (£/res)   : data_england/finance_all.csv  + population_all.csv  (all 282)
+  - deprivation       : data_england/scorecard_imd.csv (IoD2025, 8 domains)
+  - control / party   : data_england/control_all.csv   (Open Council Data UK, 2026)
+  - ethnicity/age%    : data_england/profile_all.csv (267) + data/profile.csv (15 + England)
+  - age pyramid       : data/age_bands.csv        (original 15 + England only)
+  - reading links     : data/reading_links.csv    (original 15 only)
+  - election banner    : data/elections.csv        (original 15 only)
 
-Every input beyond data/councils.csv + data_fy*/doc_topics.csv is optional. If
-it's missing, the panel it feeds is left out of data.json and app.js skips it.
-Safe to re-run any time (idempotent, no side effects besides overwriting data.json).
+Every panel degrades: a council with no input for a panel is simply omitted from it.
+Reads only; writes only site/data.json. Idempotent. Run: python site/build.py
 """
 import json
 import re
@@ -22,6 +31,7 @@ import plotly.express as px
 
 ROOT = Path(__file__).parent.parent
 DATA_DIR = ROOT / "data"
+ENG_DIR = ROOT / "data_england"
 SITE_DIR = Path(__file__).parent
 
 sys.path.insert(0, str(ROOT))
@@ -35,8 +45,7 @@ TOPIC_COLORS = {t: _SAFE[i] for i, t in enumerate(TOPICS)}
 NEUTRAL_GREY = _SAFE[10]
 TAXONOMY_EXAMPLES = {t: ", ".join(kws[:5]) for t, kws in TOPIC_KEYWORDS.items()}
 
-# lifted from finance.py — service -> topic mapping used to restrict talk-vs-spend
-# to topics that actually have a budget line.
+# service -> topic mapping used to restrict talk-vs-spend to topics with a budget line.
 SERVICE_TO_TOPIC = {
     "Education services": "Children & Education",
     "Highways and transport services": "Transport & Highways",
@@ -47,82 +56,35 @@ SERVICE_TO_TOPIC = {
     "Cultural and related services": "Local Economy",
     "Environmental and regulatory services": "Climate & Environment",
     "Planning and development services": "Housing & Planning",
-    "Police services": None,
-    "Fire and rescue services": None,
-    "Central services": None,
-    "Other services": None,
-    "Total Service Expenditure": None,
 }
-MATCHED_SPEND_TOPICS = sorted({t for t in SERVICE_TO_TOPIC.values() if t is not None})
+MATCHED_SPEND_TOPICS = sorted(set(SERVICE_TO_TOPIC.values()))
 
-# lifted from app.py, extended with the 6 new councils per v4 brief.
-PREVIOUS_CONTROL = {
-    "Kent": ("REF", "May 2025", "CON"),
-    "Lancashire": ("REF", "May 2025", "CON"),
-    # previous=None: Sheffield was already NOC before May 2025 — "LAB-led" is a
-    # refinement, not a material change, so no "previously X" line should render.
-    "Sheffield": ("NOC (LAB-led)", "May 2025", None),
-    "Bristol": ("GRN-led NOC", "May 2024", "GRN-led NOC"),
-    "Bradford": ("LAB", "May 2022", "LAB"),
-    "Bromley": ("CON", "long-standing", "CON"),
-    "Bath and North East Somerset": ("LD", "May 2019", "LD"),
-    "Mid Suffolk": ("GRN", "May 2023", "CON"),
-    "Tower Hamlets": ("Aspire", "May 2022", "LAB"),
-    "Manchester": ("LAB", "long-standing", "LAB"),
-    "Camden": ("LAB", "long-standing", "LAB"),
-    "Bexley": ("CON", "since 2006", "CON"),
-    "Hillingdon": ("CON", "since 2006", "CON"),
-    "Somerset": ("LD", "May 2022", "CON"),
-    # Leeds went NOC at the May 2026 elections — Labour minority admin, previously
-    # Labour majority. Rendered the same way Sheffield's "NOC (LAB-led)" is.
-    "Leeds": ("NOC (LAB-led)", "May 2026", "LAB"),
+# IoD2025 deprivation domains (scorecard_imd.csv) and their reader-facing labels.
+DOMAINS = ["IMD", "Income", "Employment", "Education", "Health", "Crime", "Barriers", "Living"]
+DOMAIN_LABELS = {
+    "IMD": "Overall deprivation",
+    "Income": "Income",
+    "Employment": "Employment",
+    "Education": "Education & skills",
+    "Health": "Health & disability",
+    "Crime": "Crime",
+    "Barriers": "Barriers to housing & services",
+    "Living": "Living environment",
 }
-
-# National-view party buckets — coordinator-specified groupings (collapses
-# NOC/composite labels, not a literal read of councils.csv `party`).
-PARTY_BUCKETS = {
-    "Labour": ["Bradford", "Leeds", "Manchester", "Camden"],
-    "Conservative": ["Bromley", "Bexley", "Hillingdon"],
-    "Liberal Democrat": ["Bath and North East Somerset", "Somerset"],
-    "Reform UK": ["Kent", "Lancashire"],
-    "Green": ["Bristol", "Mid Suffolk"],
-    "Independent/Other": ["Sheffield", "Tower Hamlets"],
-}
-
-PARTY_NAMES = {
-    "REF": "Reform UK", "CON": "Conservative", "LAB": "Labour",
-    "LD": "Liberal Democrat", "GRN": "Green", "NOC": "No Overall Control",
-    "IND": "Independent", "Aspire": "Aspire (local party)",
-}
-
-# scorecard metrics live on the site. aroad_delay (traffic) is back per v5 — the
-# scorecard.csv rows may not have landed for all 15 yet; build_scorecard_ranks()
-# only produces a metric if it's actually present in the data, so this degrades
-# to 4 metrics automatically until aroad_delay rows land, then picks up 5.
-SCORECARD_METRICS = ["attainment8", "co2_per_capita", "rent_affordability", "crime_per_1000", "aroad_delay"]
-METRIC_LABELS = {
-    "attainment8": "GCSE Attainment 8",
-    "co2_per_capita": "CO2 per capita",
-    "rent_affordability": "Rent affordability",
-    "crime_per_1000": "Crime per 1,000",
-    "aroad_delay": "A-road delay (secs/vehicle-mile)",
-}
-# metric -> whether a lower value ranks better (co2, crime, rent burden, delay).
-LOWER_IS_BETTER = {
-    "co2_per_capita": True, "crime_per_1000": True, "rent_affordability": True,
-    "attainment8": False, "aroad_delay": True,
-}
+# fixed National-view bucket order (matches control_all.py buckets)
+BUCKET_ORDER = ["Labour", "Conservative", "Liberal Democrat", "Reform UK", "Green", "Independent/Other"]
 
 AGE_BAND_ORDER = ["0-15", "16-29", "30-44", "45-64", "65+"]
 
-
-def spell_party(code):
-    if not isinstance(code, str) or not code:
-        return code
-    out = code
-    for acronym, name in sorted(PARTY_NAMES.items(), key=lambda kv: -len(kv[0])):
-        out = re.sub(rf"\b{re.escape(acronym)}\b", name, out)
-    return out
+# the original 15 (harvested into data_fy*): name -> ons_code. Their gateway_id is
+# blank in scorecard_imd.csv, so their corpus council_id comes from data/councils.csv.
+ORIGINAL_15 = {
+    "Bradford": "E08000032", "Bristol": "E06000023", "Sheffield": "E08000019",
+    "Kent": "E10000016", "Bromley": "E09000006", "Bath and North East Somerset": "E06000022",
+    "Mid Suffolk": "E07000203", "Tower Hamlets": "E09000030", "Lancashire": "E10000017",
+    "Leeds": "E08000035", "Manchester": "E08000003", "Camden": "E09000007",
+    "Bexley": "E09000004", "Hillingdon": "E09000017", "Somerset": "E06000066",
+}
 
 
 def read_csv_optional(path, **kwargs):
@@ -133,9 +95,6 @@ def read_csv_optional(path, **kwargs):
 
 
 def read_shard_csv(path):
-    """Read a shard CSV defensively — a harvest still in progress can leave a
-    partially-written or momentarily-missing file. Skip that shard cleanly rather
-    than crashing the whole build."""
     if not path.exists():
         return None
     try:
@@ -143,280 +102,279 @@ def read_shard_csv(path):
     except (pd.errors.EmptyDataError, pd.errors.ParserError, OSError, ValueError) as e:
         print(f"  skipping incomplete shard {path}: {e}")
         return None
-    if df.empty:
-        return None
-    return df
+    return None if df.empty else df
 
 
-def load_councils():
-    """Union of data/councils.csv + any data_fy1../councils.csv, deduped by id —
-    picks up new councils automatically as their harvest folders land."""
-    frames = [pd.read_csv(DATA_DIR / "councils.csv")]
-    for i in range(1, 8):
-        df = read_shard_csv(ROOT / f"data_fy{i}" / "councils.csv")
-        if df is not None:
-            frames.append(df)
-    councils = pd.concat(frames, ignore_index=True).drop_duplicates(subset="id", keep="first")
-    return councils.reset_index(drop=True)
+# ------------------------------------------------------------------ registry ---
+def load_registry():
+    """Master council list from scorecard_imd.csv (distinct ons_code) -> dict
+    ons_code -> {name, tier, council_id}. council_id (gateway id, for the corpus
+    join) comes from scorecard_imd for the 267 and from data/councils.csv for the 15."""
+    imd = pd.read_csv(ENG_DIR / "scorecard_imd.csv")
+    reg_rows = imd.drop_duplicates("ons_code")[["ons_code", "council", "tier", "gateway_id"]]
+
+    old = pd.read_csv(DATA_DIR / "councils.csv")
+    name_to_id = dict(zip(old["name"], old["id"]))
+
+    reg = {}
+    for _, r in reg_rows.iterrows():
+        code = r["ons_code"]
+        gid = r["gateway_id"]
+        if pd.notna(gid) and str(gid).strip() not in ("", "nan"):
+            cid = int(float(gid))
+        else:  # original 15 -> data/councils.csv id
+            cid = name_to_id.get(r["council"])
+            cid = int(cid) if cid is not None else None
+        reg[code] = {"name": r["council"], "tier": r["tier"], "council_id": cid}
+    return reg
 
 
-def load_fy_corpus():
-    """Union of whichever data_fy1..7/doc_topics.csv have landed cleanly. None if
-    none yet. This is now the ONLY discussion corpus used on the site (2026 YTD
-    retired). A shard dir that exists but isn't fully written yet (still
-    harvesting) is skipped rather than failing the build."""
+# -------------------------------------------------------------------- corpus ---
+def load_corpus_by_ons(id2ons):
+    """Union every doc_topics shard, map council_id -> ons_code, drop unmapped
+    rows, sum topic hits per ons_code. Returns {ons_code: {topic: pct}}."""
     frames = []
     for i in range(1, 8):
         df = read_shard_csv(ROOT / f"data_fy{i}" / "doc_topics.csv")
-        if df is None:
-            continue
-        if "committee" in df.columns:
-            df = df[~df["committee"].str.contains(NOTICE_PATTERN, na=False)]
-        frames.append(df)
+        if df is not None:
+            frames.append(df)
+    for d in sorted(ENG_DIR.glob("c*/doc_topics.csv")):
+        df = read_shard_csv(d)
+        if df is not None:
+            frames.append(df)
     if not frames:
-        return None
-    fy = pd.concat(frames, ignore_index=True)
+        return {}
+    corpus = pd.concat(frames, ignore_index=True)
+    if "committee" in corpus.columns:
+        corpus = corpus[~corpus["committee"].str.contains(NOTICE_PATTERN, na=False)]
     for t in TOPICS:
-        if t not in fy.columns:
-            fy[t] = 0
-    return fy
+        if t not in corpus.columns:
+            corpus[t] = 0
+    corpus["ons_code"] = corpus["council_id"].map(id2ons)
+    corpus = corpus[corpus["ons_code"].notna()]
+    sums = corpus.groupby("ons_code")[TOPICS].sum()
+    shares = {}
+    for code, row in sums.iterrows():
+        total = row.sum()
+        if total > 0:
+            shares[code] = (row / total * 100).round(1).to_dict()
+    return shares
 
 
-def load_core():
-    finance = read_csv_optional(DATA_DIR / "finance.csv")
-    finance_topics = read_csv_optional(DATA_DIR / "finance_topics.csv")
-    profile = read_csv_optional(DATA_DIR / "profile.csv")
-    demographics = read_csv_optional(DATA_DIR / "demographics.csv")
-    elections = read_csv_optional(DATA_DIR / "elections.csv")
-    scorecard = read_csv_optional(DATA_DIR / "scorecard.csv")
-    age_bands = read_csv_optional(DATA_DIR / "age_bands.csv")
-    reading_links = read_csv_optional(DATA_DIR / "reading_links.csv")
-    if scorecard is not None:
-        scorecard = scorecard[scorecard["metric"].isin(SCORECARD_METRICS)].copy()
-    return finance, finance_topics, profile, demographics, elections, scorecard, age_bands, reading_links
+# ------------------------------------------------------------------- finance ---
+def load_finance_by_ons():
+    """{ons_code: {service: spend_gbp_thousands}} from finance_all.csv (all 282)."""
+    fa = pd.read_csv(ENG_DIR / "finance_all.csv")
+    # suppressed values ('[x]') and any non-numeric -> dropped (drop-don't-fake)
+    fa["spend_gbp_thousands"] = pd.to_numeric(fa["spend_gbp_thousands"], errors="coerce")
+    fa = fa[fa["spend_gbp_thousands"].notna()]
+    out = {}
+    for code, grp in fa.groupby("ons_code"):
+        out[code] = dict(zip(grp["service"], grp["spend_gbp_thousands"]))
+    return out
 
 
-def topic_share_pct(df, restrict_to=None):
-    cols = restrict_to if restrict_to else TOPICS
-    cols = [c for c in cols if c in df.columns]
-    if not cols:
+def money_per_resident(services, pop):
+    if not services or not pop:
         return None
-    sums = df[cols].sum()
-    total = sums.sum()
+    rows = [{"service": s, "gbp_per_resident": round(v * 1000 / pop, 1)} for s, v in services.items()]
+    rows.sort(key=lambda r: -r["gbp_per_resident"])
+    return rows
+
+
+def finance_topic_shares(services):
+    """Council's spend share across the 7 matched topics, from its service spend."""
+    if not services:
+        return None
+    by_topic = {}
+    for svc, spend in services.items():
+        topic = SERVICE_TO_TOPIC.get(svc)
+        if topic:
+            by_topic[topic] = by_topic.get(topic, 0) + spend
+    total = sum(by_topic.values())
     if total <= 0:
         return None
-    return (sums / total * 100).to_dict()
+    return {t: round(by_topic[t] / total * 100, 1) for t in by_topic}
 
 
-def build_money(finance, demographics, council_name):
-    if finance is None or demographics is None:
-        return None
-    pop_row = demographics[demographics["council"] == council_name]
-    cf = finance[finance["council"] == council_name]
-    if pop_row.empty or cf.empty:
-        return None
-    pop = pop_row["population"].iloc[0]
-    rows = cf.copy()
-    rows["gbp_per_resident"] = rows["spend_gbp_thousands"] * 1000 / pop
-    rows = rows.sort_values("gbp_per_resident", ascending=False)
-    return [
-        {"service": r["service"], "gbp_per_resident": round(r["gbp_per_resident"], 1)}
-        for _, r in rows.iterrows()
-    ]
-
-
-def build_money_median(finance, demographics, council_names):
-    if finance is None or demographics is None:
-        return None, 0
-    per_resident = []
-    for cname in council_names:
-        m = build_money(finance, demographics, cname)
-        if m:
-            per_resident.append(pd.DataFrame(m).assign(council=cname))
-    if not per_resident:
-        return None, 0
-    all_money = pd.concat(per_resident, ignore_index=True)
-    n = all_money["council"].nunique()
-    median = all_money.groupby("service")["gbp_per_resident"].median().round(1)
-    return median.to_dict(), n
-
-
-def build_money_share(finance_topics, council_name):
-    """Topic-level spend share for the money panel's "% share" toggle view —
-    council's own share of spend by topic vs the England-average share, both
-    already computed in finance_topics.csv (incl. its 'England average' row)."""
-    if finance_topics is None:
-        return None
-    c = finance_topics[finance_topics["council"] == council_name]
-    if c.empty:
-        return None
-    eng = finance_topics[finance_topics["council"] == "England average"]
-    eng_map = eng.set_index("topic")["spend_share_pct"].to_dict()
-    rows = c.sort_values("spend_share_pct", ascending=False)
-    return [
-        {"topic": r["topic"], "council_pct": round(r["spend_share_pct"], 1), "england_pct": round(eng_map.get(r["topic"], 0.0), 1)}
-        for _, r in rows.iterrows()
-    ]
-
-
-def build_talk_vs_spend(fy_corpus, finance_topics, council_id, council_name):
-    if fy_corpus is None or finance_topics is None:
-        return None
-    c_fy = fy_corpus[fy_corpus["council_id"] == council_id] if "council_id" in fy_corpus.columns else fy_corpus[fy_corpus.get("council") == council_name]
-    if c_fy.empty:
-        return None
-    c_finance = finance_topics[
-        (finance_topics["council"] == council_name) & (finance_topics["topic"].isin(MATCHED_SPEND_TOPICS))
-    ]
-    if c_finance.empty:
-        return None
-    matched = [t for t in MATCHED_SPEND_TOPICS if t in c_finance["topic"].values]
-    discussion = topic_share_pct(c_fy, restrict_to=matched)
-    if discussion is None:
-        return None
-    spend = c_finance.set_index("topic")["spend_share_pct"].to_dict()
-    topics_out = [
-        {"topic": t, "discussion_pct": round(discussion.get(t, 0.0), 1), "spend_pct": round(spend.get(t, 0.0), 1)}
-        for t in matched
-    ]
-    note = None
-    prev = PREVIOUS_CONTROL.get(council_name)
-    if prev and prev[2] is not None and prev[0] != prev[2]:
-        note = "spend committed under the previous administration"
-    return {"topics": topics_out, "note": note}
-
-
-def build_scorecard_ranks(scorecard):
-    """metric -> {council: {value, rank, n}} plus england value per metric."""
+# ---------------------------------------------------------------- deprivation ---
+def load_scorecard(reg):
+    """{ons_code: [8 domain dicts]} from scorecard_imd.csv, in DOMAIN order."""
+    imd = pd.read_csv(ENG_DIR / "scorecard_imd.csv")
     out = {}
-    england = {}
-    if scorecard is None:
-        return out, england
-    for metric, grp in scorecard.groupby("metric"):
-        ranked = grp[grp["council"] != "England"].copy()
-        lower_better = LOWER_IS_BETTER.get(metric, False)
-        ranked["rank"] = ranked["value"].rank(ascending=lower_better, method="min")
-        n = len(ranked)
-        out[metric] = {
-            r["council"]: {"value": r["value"], "rank": int(r["rank"]), "n": n, "proxy": bool(r.get("proxy", False)) if pd.notna(r.get("proxy", False)) else False,
-                           "year": r.get("year"), "source": r.get("source")}
-            for _, r in ranked.iterrows()
+    for code, grp in imd.groupby("ons_code"):
+        g = grp.set_index("domain")
+        row = []
+        for dom in DOMAINS:
+            if dom not in g.index:
+                continue
+            d = g.loc[dom]
+            row.append({
+                "domain": dom, "label": DOMAIN_LABELS[dom],
+                "rank": int(d["rank"]), "pool_n": int(d["pool_n"]), "tier": d["tier"],
+                "decile": int(d["decile"]), "score": float(d["score"]), "prop10": float(d["prop10"]),
+            })
+        out[code] = row
+    return out
+
+
+# -------------------------------------------------------------------- control ---
+def load_control():
+    """{ons_code: {current, since, since_year, previous, changed, bucket}}."""
+    df = read_csv_optional(ENG_DIR / "control_all.csv")
+    if df is None:
+        return {}
+    out = {}
+    for _, r in df.iterrows():
+        yr = int(r["since_year"])
+        since = "2016 or earlier" if yr <= 2016 else str(yr)
+        changed = bool(r["changed"])
+        out[r["ons_code"]] = {
+            "current": r["control_label"], "since": since, "since_year": yr,
+            "previous": r["previous_label"] if changed and r["previous_label"] else None,
+            "changed": changed, "bucket": r["bucket"],
         }
-        eng = grp[grp["council"] == "England"]
-        england[metric] = eng["value"].iloc[0] if not eng.empty else None
-    return out, england
+    return out
 
 
-def build_league_table(scorecard_ranks, england_vals, councils):
-    metrics = [m for m in SCORECARD_METRICS if m in scorecard_ranks]
-    rows = []
-    for _, crow in councils.iterrows():
-        cname = crow["name"]
-        row = {"council": cname, "party": spell_party(crow["party"])}
-        for m in metrics:
-            hit = scorecard_ranks.get(m, {}).get(cname)
-            row[m] = hit["value"] if hit else None
-            row[f"{m}_rank"] = hit["rank"] if hit else None
-            row[f"{m}_n"] = hit["n"] if hit else None
-        rows.append(row)
-    return {"metrics": metrics, "metric_labels": METRIC_LABELS, "england": england_vals, "rows": rows}
-
-
-def build_party_groups(share_lookup, councils_in_data, label_key="spend_share"):
-    """share_lookup: {council_name: {topic: pct}}. Returns per-bucket equal-weighted
-    mean over whichever bucket members are actually present in share_lookup."""
+# ----------------------------------------------------------------- aggregates ---
+def party_groups(share_lookup, bucket_of, label_key):
+    """Equal-weighted mean share per control bucket over members present in share_lookup."""
     groups = []
-    for party, names in PARTY_BUCKETS.items():
-        present = [n for n in names if n in share_lookup]
-        if not present:
+    for bucket in BUCKET_ORDER:
+        members = [n for n in share_lookup if bucket_of.get(n) == bucket]
+        if not members:
             continue
-        series = [pd.Series(share_lookup[n]) for n in present]
+        series = [pd.Series(share_lookup[n]) for n in members]
         mean_share = pd.concat(series, axis=1).mean(axis=1).round(1).to_dict()
-        groups.append({"party": party, "n": len(present), "councils": present, label_key: mean_share})
+        groups.append({"party": bucket, "n": len(members), "councils": sorted(members), label_key: mean_share})
     return groups
 
 
 def main():
-    councils = load_councils()
-    fy_corpus = load_fy_corpus()
-    finance, finance_topics, profile, demographics, elections, scorecard, age_bands, reading_links = load_core()
+    reg = load_registry()
+    id2ons = {r["council_id"]: code for code, r in reg.items() if r["council_id"] is not None}
 
-    council_names = sorted(councils["name"])
+    corpus_shares = load_corpus_by_ons(id2ons)                 # ons -> {topic: pct}
+    finance_by_ons = load_finance_by_ons()                     # ons -> {service: spend_k}
+    scorecard = load_scorecard(reg)                            # ons -> [8 domains]
+    control = load_control()                                   # ons -> {...}
 
-    # -- FY-corpus topic shares per council, and the equal-weighted corpus avg ---
-    council_shares = {}
-    for cname in council_names:
-        cid = councils.loc[councils["name"] == cname, "id"].iloc[0]
-        if fy_corpus is not None:
-            c_fy = fy_corpus[fy_corpus["council_id"] == cid]
-            s = topic_share_pct(c_fy)
-            if s:
-                council_shares[cname] = s
-    corpus_avg = (
-        pd.concat([pd.Series(s) for s in council_shares.values()], axis=1).mean(axis=1).round(1).to_dict()
-        if council_shares else {}
-    )
+    pop_df = read_csv_optional(ENG_DIR / "population_all.csv")
+    population = dict(zip(pop_df["ons_code"], pop_df["population"])) if pop_df is not None else {}
 
-    money_median, money_median_n = build_money_median(finance, demographics, council_names)
+    # ethnicity/age%: profile_all (267, by ons) + data/profile.csv (15 + England, by name)
+    profile_all = read_csv_optional(ENG_DIR / "profile_all.csv")
+    profile_old = read_csv_optional(DATA_DIR / "profile.csv")
+    eth_by_ons = {}
+    if profile_all is not None:
+        for _, p in profile_all.iterrows():
+            if pd.notna(p.get("white_pct")):
+                eth_by_ons[p["ons_code"]] = {"White": p["white_pct"], "Asian": p["asian_pct"],
+                                             "Black": p["black_pct"], "Mixed": p["mixed_pct"], "Other": p["other_pct"]}
+    eth_by_name = {}
+    ethnicity_england = None
+    if profile_old is not None:
+        for _, p in profile_old.iterrows():
+            if pd.notna(p.get("white_pct")):
+                e = {"White": p["white_pct"], "Asian": p["asian_pct"], "Black": p["black_pct"],
+                     "Mixed": p["mixed_pct"], "Other": p["other_pct"]}
+                if p["council"] == "England":
+                    ethnicity_england = e
+                else:
+                    eth_by_name[p["council"]] = e
 
-    # -- age bands: pyramid (needs `sex` col) or paired-bars fallback ------------
-    age_bands_mode = None
-    age_bands_by_council = {}
-    age_pyramid_england = None
-    age_bands_england = None
+    elections = read_csv_optional(DATA_DIR / "elections.csv")
+    reading_links = read_csv_optional(DATA_DIR / "reading_links.csv")
+    age_bands = read_csv_optional(DATA_DIR / "age_bands.csv")
+
+    # ---- per-council derived: money, money_share, talk_vs_spend, topic_share ----
+    council_names = sorted(r["name"] for r in reg.values())
+    name2ons = {r["name"]: code for code, r in reg.items()}
+
+    topic_share = {code: corpus_shares.get(code) for code in reg}
+    money = {}
+    ft_shares = {}   # name -> {topic: pct}
+    for code, r in reg.items():
+        money[code] = money_per_resident(finance_by_ons.get(code), population.get(code))
+        fts = finance_topic_shares(finance_by_ons.get(code))
+        if fts:
+            ft_shares[r["name"]] = fts
+
+    # England-average topic spend share (equal-weighted over all councils) & corpus avg
+    ft_england = (pd.concat([pd.Series(s) for s in ft_shares.values()], axis=1).mean(axis=1).round(1).to_dict()
+                  if ft_shares else {})
+    corpus_avg = (pd.concat([pd.Series(corpus_shares[c]) for c in corpus_shares], axis=1).mean(axis=1).round(1).to_dict()
+                  if corpus_shares else {})
+
+    # money median per resident across all councils that have money
+    money_frames = [pd.DataFrame(m) for m in money.values() if m]
+    if money_frames:
+        allm = pd.concat(money_frames, ignore_index=True)
+        money_median = allm.groupby("service")["gbp_per_resident"].median().round(1).to_dict()
+        money_median_n = len(money_frames)
+    else:
+        money_median, money_median_n = None, 0
+
+    # ---- age bands (original 15 + England only) --------------------------------
+    age_mode = age_pyramid_england = age_bands_england = None
+    age_by_name = {}
     if age_bands is not None and "sex" in age_bands.columns:
-        age_bands_mode = "pyramid"
-        for cname in list(council_names) + ["England"]:
+        age_mode = "pyramid"
+        for cname in council_names + ["England"]:
             a = age_bands[age_bands["council"] == cname]
             if a.empty:
                 continue
-            pyramid = {}
+            pyr = {}
             for band in AGE_BAND_ORDER:
                 b = a[a["band"] == band]
-                if b.empty:
-                    continue
-                pyramid[band] = {
-                    "male": b.loc[b["sex"] == "male", "pct"].sum(),
-                    "female": b.loc[b["sex"] == "female", "pct"].sum(),
-                }
-            if pyramid:
+                if not b.empty:
+                    pyr[band] = {"male": b.loc[b["sex"] == "male", "pct"].sum(),
+                                 "female": b.loc[b["sex"] == "female", "pct"].sum()}
+            if pyr:
                 if cname == "England":
-                    age_pyramid_england = pyramid
+                    age_pyramid_england = pyr
                 else:
-                    age_bands_by_council[cname] = pyramid
+                    age_by_name[cname] = pyr
     elif age_bands is not None:
-        age_bands_mode = "paired"
+        age_mode = "paired"
         eng = age_bands[age_bands["council"] == "England"]
         if not eng.empty:
             age_bands_england = eng.set_index("band")["pct"].to_dict()
         for cname in council_names:
             a = age_bands[age_bands["council"] == cname]
             if not a.empty:
-                age_bands_by_council[cname] = a.set_index("band")["pct"].to_dict()
+                age_by_name[cname] = a.set_index("band")["pct"].to_dict()
 
-    scorecard_ranks, england_vals = build_scorecard_ranks(scorecard)
-    league_table = build_league_table(scorecard_ranks, england_vals, councils)
+    # ---- party buckets (over control) -----------------------------------------
+    bucket_of = {r["name"]: control.get(code, {}).get("bucket") for code, r in reg.items()}
+    disc_share_by_name = {r["name"]: corpus_shares[code] for code, r in reg.items() if code in corpus_shares}
+    party_groups_spend = party_groups(ft_shares, bucket_of, "spend_share")
+    party_groups_discussion = party_groups(disc_share_by_name, bucket_of, "discussion_share")
 
-    party_groups_spend = build_party_groups(
-        {c: finance_topics[finance_topics["council"] == c].set_index("topic")["spend_share_pct"].to_dict()
-         for c in council_names if finance_topics is not None and not finance_topics[finance_topics["council"] == c].empty},
-        council_names, "spend_share",
-    ) if finance_topics is not None else None
-    party_groups_discussion = build_party_groups(council_shares, council_names, "discussion_share")
+    # ---- league table (all councils, IMD domains) -----------------------------
+    league_rows = []
+    for code, r in reg.items():
+        sc = scorecard.get(code)
+        if not sc:
+            continue
+        ctrl = control.get(code, {})
+        row = {"council": r["name"], "ons_code": code, "tier": r["tier"],
+               "control": ctrl.get("current"), "bucket": ctrl.get("bucket")}
+        for d in sc:
+            dom = d["domain"]
+            row[f"{dom}_score"] = d["score"]
+            row[f"{dom}_decile"] = d["decile"]
+            row[f"{dom}_rank"] = d["rank"]
+            row[f"{dom}_pool"] = d["pool_n"]
+        league_rows.append(row)
+    league_table = {"domains": DOMAINS, "domain_labels": DOMAIN_LABELS, "rows": league_rows}
 
+    # ---- assemble councils ----------------------------------------------------
     out_councils = {}
-    for _, crow in councils.iterrows():
-        cid, cname = crow["id"], crow["name"]
-
-        prev = PREVIOUS_CONTROL.get(cname)
-        control = None
-        if prev:
-            current, since, previous = prev
-            control = {
-                "current": spell_party(current), "since": since,
-                "previous": spell_party(previous),
-                "changed": previous is not None and current != previous,
-            }
+    for code, r in reg.items():
+        cname = r["name"]
+        ctrl = control.get(code)
 
         elec = None
         if elections is not None:
@@ -424,50 +382,23 @@ def main():
             if not e.empty:
                 elec = {"title": e.iloc[0]["title"], "poll_date": e.iloc[0]["poll_date"]}
 
-        population = None
-        if demographics is not None:
-            d = demographics[demographics["council"] == cname]
-            if not d.empty:
-                population = int(d["population"].iloc[0])
+        ethnicity = eth_by_ons.get(code) or eth_by_name.get(cname)
 
-        ethnicity = None
-        if profile is not None:
-            p = profile[profile["council"] == cname]
-            if not p.empty:
-                p = p.iloc[0]
-                if pd.notna(p.get("white_pct")):
-                    ethnicity = {
-                        "White": p.get("white_pct"), "Asian": p.get("asian_pct"),
-                        "Black": p.get("black_pct"), "Mixed": p.get("mixed_pct"),
-                        "Other": p.get("other_pct"),
-                    }
-        ethnicity_england = None
-        if profile is not None:
-            pe = profile[profile["council"] == "England"]
-            if not pe.empty:
-                pe = pe.iloc[0]
-                if pd.notna(pe.get("white_pct")):
-                    ethnicity_england = {
-                        "White": pe.get("white_pct"), "Asian": pe.get("asian_pct"),
-                        "Black": pe.get("black_pct"), "Mixed": pe.get("mixed_pct"),
-                        "Other": pe.get("other_pct"),
-                    }
+        m_share = None
+        if cname in ft_shares:
+            rows = sorted(ft_shares[cname].items(), key=lambda kv: -kv[1])
+            m_share = [{"topic": t, "council_pct": p, "england_pct": round(ft_england.get(t, 0.0), 1)} for t, p in rows]
 
-        money = build_money(finance, demographics, cname)
-        money_share = build_money_share(finance_topics, cname)
-        tvs = build_talk_vs_spend(fy_corpus, finance_topics, cid, cname)
-
-        sc_row = []
-        for m in SCORECARD_METRICS:
-            hit = scorecard_ranks.get(m, {}).get(cname)
-            if hit:
-                sc_row.append({
-                    "metric": m, "label": METRIC_LABELS[m], "value": hit["value"],
-                    "rank": hit["rank"], "n": hit["n"], "proxy": hit["proxy"],
-                    "year": hit["year"], "source": hit["source"],
-                    "england_value": england_vals.get(m),
-                    "lower_is_better": LOWER_IS_BETTER.get(m, False),
-                })
+        tvs = None
+        if code in corpus_shares and cname in ft_shares:
+            matched = [t for t in MATCHED_SPEND_TOPICS if t in ft_shares[cname]]
+            disc_matched = {t: corpus_shares[code].get(t, 0.0) for t in matched}
+            tot = sum(disc_matched.values())
+            if tot > 0 and matched:
+                disc_pct = {t: round(disc_matched[t] / tot * 100, 1) for t in matched}
+                note = "spend committed under the previous administration" if (ctrl and ctrl["changed"]) else None
+                tvs = {"topics": [{"topic": t, "discussion_pct": disc_pct[t], "spend_pct": ft_shares[cname][t]} for t in matched],
+                       "note": note}
 
         links = []
         if reading_links is not None:
@@ -475,20 +406,20 @@ def main():
             links = rl[["title", "url", "source"]].to_dict("records")
 
         out_councils[cname] = {
-            "id": int(cid),
-            "party": crow["party"],
-            "party_full": spell_party(crow["party"]),
-            "control": control,
+            "id": r["council_id"], "ons_code": code, "tier": r["tier"],
+            "party": ctrl["bucket"] if ctrl else None,
+            "party_full": ctrl["current"] if ctrl else None,
+            "control": ctrl,
             "election": elec,
-            "population": population,
+            "population": int(population[code]) if code in population else None,
             "ethnicity": ethnicity,
             "ethnicity_england": ethnicity_england,
-            "topic_share": {k: round(v, 1) for k, v in council_shares.get(cname, {}).items()} or None,
-            "age_bands": age_bands_by_council.get(cname),
-            "money": money,
-            "money_share": money_share,
+            "topic_share": topic_share.get(code),
+            "age_bands": age_by_name.get(cname),
+            "money": money.get(code),
+            "money_share": m_share,
             "talk_vs_spend": tvs,
-            "scorecard": sc_row,
+            "scorecard": scorecard.get(code, []),
             "reading_links": links,
         }
 
@@ -500,7 +431,8 @@ def main():
         "corpus_avg_topic_share": corpus_avg,
         "money_median_per_resident": money_median,
         "money_median_n": money_median_n,
-        "age_bands_mode": age_bands_mode,
+        "finance_topics_england": ft_england,
+        "age_bands_mode": age_mode,
         "age_bands_order": AGE_BAND_ORDER,
         "age_bands_england": age_bands_england,
         "age_pyramid_england": age_pyramid_england,
@@ -527,28 +459,26 @@ def main():
         return obj
 
     data = clean(data)
-
     out_path = SITE_DIR / "data.json"
     out_path.write_text(json.dumps(data, indent=None, default=str), encoding="utf-8")
 
-    panel_counts = {
+    counts = {
         "councils": len(out_councils),
-        "fy_corpus_loaded": fy_corpus is not None,
         "with_topic_share": sum(1 for c in out_councils.values() if c["topic_share"]),
         "with_population": sum(1 for c in out_councils.values() if c["population"] is not None),
         "with_ethnicity": sum(1 for c in out_councils.values() if c["ethnicity"]),
         "with_age_bands": sum(1 for c in out_councils.values() if c["age_bands"]),
-        "age_bands_mode": age_bands_mode,
         "with_money": sum(1 for c in out_councils.values() if c["money"]),
         "with_money_share": sum(1 for c in out_councils.values() if c["money_share"]),
         "with_talk_vs_spend": sum(1 for c in out_councils.values() if c["talk_vs_spend"]),
         "with_scorecard": sum(1 for c in out_councils.values() if c["scorecard"]),
+        "with_control": sum(1 for c in out_councils.values() if c["control"]),
         "with_reading_links": sum(1 for c in out_councils.values() if c["reading_links"]),
-        "party_groups_spend": len(party_groups_spend) if party_groups_spend else 0,
-        "party_groups_discussion": len(party_groups_discussion) if party_groups_discussion else 0,
-        "league_table_metrics": len(league_table["metrics"]),
+        "party_groups_spend": len(party_groups_spend),
+        "party_groups_discussion": len(party_groups_discussion),
+        "league_rows": len(league_rows),
     }
-    print(f"wrote {out_path} -- {panel_counts}")
+    print(f"wrote {out_path} -- {counts}")
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@
 <div class="container">
 
   <header>
-    <p class="kicker">★ Campaign Lab hack day · 15 English councils · open data ★</p>
+    <p class="kicker">★ Campaign Lab · every English council · open data ★</p>
     <h1>Council Receipts</h1>
     <p class="tagline">What your council talks about, and where the money goes. <em>Show me the receipts.</em></p>
     <nav class="tabs">
@@ -27,7 +27,8 @@
   <section id="tab-council" class="tab-panel active">
 
     <div class="council-picker">
-      <select id="council-select" aria-label="Choose a council"></select>
+      <input type="text" id="council-input" list="council-list" aria-label="Search for a council" placeholder="Search a council…" autocomplete="off">
+      <datalist id="council-list"></datalist>
       <div id="election-banner"></div>
       <div id="control-line" class="control-line"></div>
     </div>
@@ -77,9 +78,9 @@
     </section>
 
     <section class="panel" id="panel-scorecard">
-      <h2>Scorecard</h2>
+      <h2>Deprivation scorecard</h2>
       <div id="scorecard-heat" class="heat-strip"></div>
-      <p class="caption">Colour = rank among the councils on this site (green better, magenta worse). Sources: DfE, DESNZ, ONS/Home Office, ONS rents vs ASHE pay.</p>
+      <p class="caption">English Indices of Deprivation 2025 (IoD2025, MHCLG). Colour: magenta = more deprived, green = less. Ranks are within tier — districts/unitaries out of 296, county councils out of 153.</p>
     </section>
 
     <section class="panel" id="panel-links">
@@ -90,13 +91,13 @@
     <details class="panel" id="panel-methodology">
       <summary>Methodology</summary>
       <div id="methodology-text">
-        <p><strong>What it is.</strong> 15 English councils across the political spectrum. Pick one to see what it talks about, where its money goes, and how it compares.</p>
+        <p><strong>What it is.</strong> Every English council in the Council Gateway (282), across the political spectrum. Pick one to see what it talks about, where its money goes, and how it compares.</p>
         <p><strong>What they talk about.</strong> Meeting minutes come from the Council Gateway API (Poteris), covering October 2024 – March 2025, matched to the 2024-25 financial year so discussion and spend cover the same period. Each document is classified by keyword counting against a fixed taxonomy. A council's discussion share for a topic = that topic's keyword hits ÷ all topic hits across its minutes. Statutory notices (licensing, road closures) are filtered out.</p>
         <p><strong>Where the money goes.</strong> Spend is from the MHCLG Revenue Outturn 2024-25, gross expenditure by service (staff + running costs), converted to £ per resident. Gross measures the resources a council actually pours into each service. The alternative, net expenditure (gross minus fees-and-charges income), measures the burden on council tax instead, and understates services that charge heavily: on a net basis Camden's £37m-a-year roads operation would show up as negative, because parking income (£57m) more than covers it. One caveat with gross: it includes activity funded by fees and charges as well as council tax. Bath's Roman Baths spend, for instance, is more than covered by admissions.</p>
         <h3>Taxonomy</h3>
         <table id="taxonomy-table" class="taxonomy"></table>
-        <p><strong>Scorecard.</strong> GCSE Attainment 8 (DfE, 2023/24, higher is better), CO₂ per person (DESNZ, 2024, lower is better), rent affordability = rent ÷ pay (ONS/ASHE, lower is better), recorded crime per 1,000 (ONS/Home Office, lower is better), and — where landed — A-road delay in secs/vehicle-mile (DfT congestion data, lower is better). Heatmap colour and league-table sort are by rank among the councils on this site, not the raw value.</p>
-        <p><strong>Limitations.</strong> Bristol has no minutes in the Gateway before April 2026, so it's excluded from discussion panels for the matched year. Kent and Lancashire are county councils — they don't run every service, and some scorecard figures are county-wide proxies (flagged where used). Recorded crime reflects reporting as well as crime. Keyword classification is crude: it counts what minutes mention. Discussion (Oct 2024–Mar 2025) predates some councils' 2025/2026 elections, so their talk reflects the administration in office at the time; the same-year spend does too, which keeps the comparison consistent.</p>
+        <p><strong>Scorecard.</strong> The English Indices of Deprivation 2025 (IoD2025, MHCLG): overall deprivation (IMD) plus seven domains — Income, Employment, Education & skills, Health & disability, Crime, Barriers to housing & services, Living environment. Ranks and deciles sit within tier: districts/unitaries are ranked out of 296, county councils out of 153 — never compare a rank or decile across tiers. Decile 1 = most-deprived tenth, decile 10 = least-deprived tenth, within that pool. Score is the underlying IoD2025 value; higher score and lower decile both mean more deprived. Score and the national most-deprived-10% share are the only figures comparable across tiers, since they're set against all of England rather than within a pool.</p>
+        <p><strong>Limitations.</strong> Control is the current composition of each council, from Open Council Data UK (public domain) — not a historical snapshot. Deprivation is England-only: there's no directly comparable UK-wide index. Some councils have no matched Gateway minutes for FY2024-25, so their discussion panels are omitted. Keyword classification is crude: it counts what minutes mention, not what was decided.</p>
       </div>
     </details>
 
@@ -109,20 +110,24 @@
       <h2>Where the budget goes, by party</h2>
       <div class="key-line" id="party-key"></div>
       <div id="party-chart"></div>
-      <p class="caption" id="party-caption">Equal-weighted mean spend share by topic, across councils currently controlled by each party. Source: MHCLG Revenue Outturn 2024-25.</p>
-      <p class="caption">Small-n caveat: most buckets are 2–4 councils — this reflects those councils' spending, not the party nationally.</p>
+      <p class="caption" id="party-caption">Equal-weighted mean spend share across councils led by each party (outright majority, minority, or largest group). Source: MHCLG Revenue Outturn 2024-25 · control from Open Council Data UK (2026).</p>
     </section>
 
     <section class="panel panel-wide" id="panel-party-discussion">
       <h2>What they talk about, by party</h2>
       <div class="key-line" id="party-discussion-key"></div>
       <div id="party-discussion-chart"></div>
-      <p class="caption">Equal-weighted mean discussion share by topic, across councils currently controlled by each party. Source: Council Gateway API minutes, FY2024-25.</p>
+      <p class="caption">Equal-weighted mean discussion share across councils led by each party (outright majority, minority, or largest group). Source: Council Gateway API minutes, FY2024-25 · control from Open Council Data UK (2026).</p>
     </section>
 
     <section class="panel panel-wide" id="panel-league">
       <h2>League table</h2>
       <p class="caption">Click a column header to sort.</p>
+      <div class="toggle-group" id="league-toggle">
+        <button class="toggle-btn active" data-n="10">Top 10</button>
+        <button class="toggle-btn" data-n="25">Top 25</button>
+        <button class="toggle-btn" data-n="50">Top 50</button>
+      </div>
       <div id="league-table-wrap"></div>
       <p class="caption" id="league-caption"></p>
     </section>
@@ -136,7 +141,7 @@
       <h2>What's next</h2>
       <p class="lede">This started as a one-day build at Campaign Lab, so there's a lot I still want to improve. Here's roughly what I'm working towards, in order:</p>
       <ol class="roadmap">
-        <li><strong>Every English council.</strong> Growing from the councils here to all ~320 in the Council Gateway. Already underway in the background.</li>
+        <li><strong>Every English council.</strong> Growing from the councils here to every English council in the Council Gateway. Already underway in the background.</li>
         <li><strong>A richer scorecard.</strong> Five metrics is what fit in a day. I'd like more of them, and better-chosen ones, so the comparison is fairer.</li>
         <li><strong>Voting outcomes.</strong> Not just what a council discusses, but what it actually decides, and who voted which way.</li>
         <li><strong>Financial health.</strong> Reserves, debt servicing, and Section 114 (effective bankruptcy) risk, so you can see which councils are under real strain.</li>
