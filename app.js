@@ -690,7 +690,7 @@ function renderQoL(c) {
       const cls = Math.abs(diff) < 0.2 ? "neutral" : isBetter ? "better" : "worse";
       diffBadge = `<span class="qol-tag ${cls}">${sign}${diff.toFixed(1)} vs England</span>`;
     }
-    const rankTxt = item.rank != null ? `<span class="qol-rank-tag">Rank #${item.rank}</span>` : "";
+    const rankTxt = item.rank != null ? `<span class="qol-rank-tag">Rank #${item.rank} of 282</span>` : "";
     return `
       <div class="qol-card">
         <div class="qol-header">
@@ -991,7 +991,7 @@ function initFeedbackForm() {
 window.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initFeedbackForm();
-  fetch("data.json?v=20260824i")
+  fetch("data.json?v=20260824j")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
