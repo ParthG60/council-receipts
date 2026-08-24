@@ -385,20 +385,36 @@ def main():
         if fts:
             ft_shares[r["name"]] = fts
 
-    # England-average topic spend share (equal-weighted over all councils) & corpus avg
-    ft_england = (pd.concat([pd.Series(s) for s in ft_shares.values()], axis=1).mean(axis=1).round(1).to_dict()
-                  if ft_shares else {})
+    # ---- Population-weighted spend benchmarks across England -----------------
+    all_spend_by_service = {}
+    total_pop_for_finance = 0
+    for code, services in finance_by_ons.items():
+        pop = population.get(code)
+        if pop and services:
+            total_pop_for_finance += pop
+            for s, val in services.items():
+                all_spend_by_service[s] = all_spend_by_service.get(s, 0) + val
+
+    if total_pop_for_finance > 0:
+        money_weighted_avg = {
+            s: round(spend_k * 1000 / total_pop_for_finance, 1)
+            for s, spend_k in all_spend_by_service.items()
+        }
+        # Population-weighted topic spend share
+        topic_spend_england = {}
+        for svc, spend_k in all_spend_by_service.items():
+            top = SERVICE_TO_TOPIC.get(svc)
+            if top:
+                topic_spend_england[top] = topic_spend_england.get(top, 0) + spend_k
+
+        tot_top_spend = sum(topic_spend_england.values())
+        ft_england = {t: round(amt / tot_top_spend * 100, 1) for t, amt in topic_spend_england.items()} if tot_top_spend > 0 else {}
+    else:
+        money_weighted_avg = {}
+        ft_england = {}
+
     corpus_avg = (pd.concat([pd.Series(corpus_shares[c]) for c in corpus_shares], axis=1).mean(axis=1).round(1).to_dict()
                   if corpus_shares else {})
-
-    # money median per resident across all councils that have money
-    money_frames = [pd.DataFrame(m) for m in money.values() if m]
-    if money_frames:
-        allm = pd.concat(money_frames, ignore_index=True)
-        money_median = allm.groupby("service")["gbp_per_resident"].median().round(1).to_dict()
-        money_median_n = len(money_frames)
-    else:
-        money_median, money_median_n = None, 0
 
     # ---- age bands (original 15 + England only) --------------------------------
     age_mode = age_pyramid_england = age_bands_england = None
@@ -535,8 +551,8 @@ def main():
         "neutral_grey": NEUTRAL_GREY,
         "taxonomy_examples": TAXONOMY_EXAMPLES,
         "corpus_avg_topic_share": corpus_avg,
-        "money_median_per_resident": money_median,
-        "money_median_n": money_median_n,
+        "money_average_per_resident": money_weighted_avg,
+        "money_median_per_resident": money_weighted_avg,
         "finance_topics_england": ft_england,
         "qol_england": qol_england,
         "distress_watchlist": distress_watchlist,

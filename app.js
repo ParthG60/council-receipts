@@ -441,20 +441,20 @@ function drawMoneyAbsolute(c) {
   const services = c.money.map((m) => m.service);
   const labels = services.map(shortService);
   const values = c.money.map((m) => m.gbp_per_resident);
-  const medians = services.map((s) => (DATA.money_median_per_resident || {})[s]);
-  const hasMedian = medians.some((v) => v != null);
+  const averages = services.map((s) => (DATA.money_average_per_resident || DATA.money_median_per_resident || {})[s]);
+  const hasAverage = averages.some((v) => v != null);
 
-  el("money-key").innerHTML = hasMedian
-    ? swatch(ACCENT, "This council") + " &nbsp; " + swatch(GREY, "England median")
+  el("money-key").innerHTML = hasAverage
+    ? swatch(ACCENT, "This council") + " &nbsp; " + swatch(GREY, "England average (pop. weighted)")
     : swatch(ACCENT, "This council");
 
   const traces = [
     withClip({ x: values.slice().reverse(), y: labels.slice().reverse(), type: "bar", orientation: "h", marker: { color: ACCENT }, text: values.slice().reverse().map((v) => fmtGbp(v)), textposition: "outside", hoverinfo: "skip" }),
   ];
-  if (hasMedian) {
+  if (hasAverage) {
     traces.push(withClip({
-      x: medians.slice().reverse(), y: labels.slice().reverse(), type: "bar", orientation: "h",
-      marker: { color: GREY }, text: medians.slice().reverse().map((v) => (v != null ? fmtGbp(v) : "")),
+      x: averages.slice().reverse(), y: labels.slice().reverse(), type: "bar", orientation: "h",
+      marker: { color: GREY }, text: averages.slice().reverse().map((v) => (v != null ? fmtGbp(v) : "")),
       textposition: "outside", hoverinfo: "skip",
     }));
   }
@@ -465,7 +465,7 @@ function drawMoneyAbsolute(c) {
       barmode: "group", showlegend: false,
       margin: { l: 130, r: 65, t: 10, b: 30 },
       height: chartHeight(services.length, 52),
-      xaxis: { title: "", tickprefix: "£", zeroline: true, zerolinecolor: "#999", zerolinewidth: 1, range: headroomRange([...values, ...medians.filter((v) => v != null)]) },
+      xaxis: { title: "", tickprefix: "£", zeroline: true, zerolinecolor: "#999", zerolinewidth: 1, range: headroomRange([...values, ...averages.filter((v) => v != null)]) },
       yaxis: { title: "" },
       template: "simple_white",
     },
@@ -478,13 +478,13 @@ function drawMoneyShare(c) {
     ? `<div class="tier-callout">ℹ️ <strong>District Council Remit:</strong> As a lower-tier district council, ${c.name || "this council"} delivers Housing, Environment, Planning, and Leisure. Major statutory services (<strong>Education, Social Care, Public Health</strong>) are funded & managed by <strong>${c.parent_county} County Council</strong>.</div>`
     : "";
 
-  el("money-lede").innerHTML = `Share of matched-topic spend, this council vs the England average.${tierCallout}`;
+  el("money-lede").innerHTML = `Share of matched-topic spend, this council vs the England population-weighted average.${tierCallout}`;
   const rows = c.money_share;
   const topics = rows.map((r) => r.topic);
   const councilVals = rows.map((r) => r.council_pct);
   const englandVals = rows.map((r) => r.england_pct);
 
-  el("money-key").innerHTML = swatch(ACCENT, "This council") + " &nbsp; " + swatch(GREY, "England average");
+  el("money-key").innerHTML = swatch(ACCENT, "This council") + " &nbsp; " + swatch(GREY, "England average (pop. weighted)");
 
   const traces = [
     withClip({ x: councilVals.slice().reverse(), y: topics.slice().reverse(), type: "bar", orientation: "h", marker: { color: ACCENT }, text: councilVals.slice().reverse().map((v) => v.toFixed(1) + "%"), textposition: "outside", hoverinfo: "skip" }),
@@ -991,7 +991,7 @@ function initFeedbackForm() {
 window.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initFeedbackForm();
-  fetch("data.json?v=20260824j")
+  fetch("data.json?v=20260824k")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
