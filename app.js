@@ -801,7 +801,7 @@ function drawLeagueTable(lt) {
 // -------------------------------------------------------------- init ---
 window.addEventListener("DOMContentLoaded", () => {
   initTabs();
-  fetch("data.json")
+  fetch("data.json?v=20260824b")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
