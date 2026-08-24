@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260824c">
+<link rel="stylesheet" href="style.css?v=20260824e">
 </head>
 <body>
 <div class="container">
@@ -27,16 +27,14 @@
   <section id="tab-council" class="tab-panel active">
 
     <div class="council-picker">
-      <div class="picker-inputs">
-        <input type="text" id="council-input" list="council-list" aria-label="Search for a council" placeholder="Type to search council (e.g. Manchester, Camden)…" autocomplete="off">
-        <datalist id="council-list"></datalist>
-        <select id="council-select" aria-label="Or select a council from the dropdown list">
-          <option value="">— Or select a council from the list (282) —</option>
-        </select>
+      <div class="combobox-wrap">
+        <input type="text" id="council-input" placeholder="Search or select a council (e.g. Manchester, Camden)…" autocomplete="off" aria-label="Search or select a council">
+        <button type="button" id="combobox-toggle" class="combobox-toggle-btn" aria-label="Open council list">▼</button>
+        <div id="combobox-menu" class="combobox-menu" style="display:none;"></div>
       </div>
       <div id="council-prompt" class="council-prompt">
         <p class="prompt-icon">🏛️</p>
-        <p class="prompt-title">Search or choose your council above</p>
+        <p class="prompt-title">Search or select your council above</p>
         <p class="prompt-sub">Explore what your councillors discuss, where public funds go, and how your council ranks across England on deprivation, quality of life, and financial distress.</p>
       </div>
       <div id="election-banner"></div>
@@ -194,15 +192,43 @@
 
     <section class="panel" id="panel-comments">
       <h2>Open feedback & comments</h2>
-      <p>Leave a note, flag a correction, or share thoughts. No account or login required—post with your name or anonymously.</p>
-      <div id="cusdis_thread"
-        data-host="https://cusdis.com"
-        data-app-id="parth-council-receipts"
-        data-page-id="council-receipts-main"
-        data-page-url="https://parthgoyal.uk/council-receipts/"
-        data-page-title="Council Receipts">
-      </div>
-      <script async defer src="https://cusdis.com/js/cusdis.es.js"></script>
+      <p>Leave a note, flag a data correction, or share thoughts. No account or login required—post with your name or anonymously.</p>
+
+      <form id="feedback-form" class="feedback-form" action="https://formsubmit.co/ajax/parthgoyal60@gmail.com" method="POST">
+        <input type="hidden" name="_subject" value="Council Receipts Feedback / Comment">
+        <input type="hidden" name="_captcha" value="false">
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="comment-author">Name / Handle (optional)</label>
+            <input type="text" id="comment-author" name="author" placeholder="Anonymous resident, journalist, etc.">
+          </div>
+          <div class="form-group">
+            <label for="comment-email">Email (optional — if you'd like a response)</label>
+            <input type="email" id="comment-email" name="email" placeholder="you@example.com">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="comment-category">Topic / Category</label>
+          <select id="comment-category" name="category">
+            <option value="general">💬 General feedback & thoughts</option>
+            <option value="data-fix">🚩 Data correction / report an issue</option>
+            <option value="feature">💡 Feature or dataset suggestion</option>
+            <option value="question">❓ Question about the numbers</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="comment-text">Your message / comment *</label>
+          <textarea id="comment-text" name="message" rows="4" required placeholder="Write your thoughts, feedback, or data suggestions here…"></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" id="feedback-submit-btn" class="feedback-submit-btn">Post Comment / Send Feedback ★</button>
+          <span id="feedback-status" class="feedback-status"></span>
+        </div>
+      </form>
     </section>
 
   </section>
@@ -215,6 +241,6 @@
 </div>
 
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" defer></script>
-<script src="app.js?v=20260824c" defer></script>
+<script src="app.js?v=20260824e" defer></script>
 </body>
 </html>

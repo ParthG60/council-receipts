@@ -108,39 +108,91 @@ function initTabs() {
 // ------------------------------------------------------- council view ---
 function initCouncilSelect() {
   const input = el("council-input");
-  const select = el("council-select");
-  const list = el("council-list");
+  const toggleBtn = el("combobox-toggle");
+  const menu = el("combobox-menu");
   const names = Object.keys(DATA.councils).sort();
 
-  list.innerHTML = names.map((n) => `<option value="${n}"></option>`).join("");
-  
-  if (select) {
-    select.innerHTML = `<option value="">— Or select a council from list (${names.length}) —</option>` +
-      names.map((n) => `<option value="${n}">${n}</option>`).join("");
-    select.addEventListener("change", () => {
-      if (select.value && DATA.councils[select.value]) {
-        input.value = select.value;
-        renderCouncil(select.value);
+  function renderMenu(query = "") {
+    const q = query.trim().toLowerCase();
+    const filtered = q ? names.filter((n) => n.toLowerCase().includes(q)) : names;
+    if (!filtered.length) {
+      menu.innerHTML = `<div class="combobox-empty">No matching councils found</div>`;
+      return;
+    }
+    menu.innerHTML = filtered
+      .map((n) => {
+        const c = DATA.councils[n];
+        const party = c.party ? `<span class="menu-party">${c.party}</span>` : "";
+        return `<div class="combobox-item" data-name="${n}"><span class="item-name">${n}</span>${party}</div>`;
+      })
+      .join("");
+
+    menu.querySelectorAll(".combobox-item").forEach((item) => {
+      item.addEventListener("click", () => {
+        const name = item.dataset.name;
+        input.value = name;
+        menu.style.display = "none";
+        renderCouncil(name);
+      });
+    });
+  }
+
+  function openMenu() {
+    renderMenu(input.value);
+    menu.style.display = "block";
+  }
+
+  function closeMenu() {
+    menu.style.display = "none";
+  }
+
+  input.addEventListener("focus", () => openMenu());
+  input.addEventListener("input", () => {
+    openMenu();
+    if (DATA.councils[input.value]) {
+      renderCouncil(input.value);
+    }
+  });
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (menu.style.display === "none") {
+        openMenu();
+        input.focus();
+      } else {
+        closeMenu();
       }
     });
   }
 
-  input.addEventListener("input", () => {
-    if (DATA.councils[input.value]) {
-      if (select) select.value = input.value;
-      renderCouncil(input.value);
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".combobox-wrap")) {
+      closeMenu();
+    }
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const q = input.value.trim().toLowerCase();
+      const match = names.find((n) => n.toLowerCase() === q) || names.find((n) => n.toLowerCase().startsWith(q));
+      if (match) {
+        input.value = match;
+        closeMenu();
+        renderCouncil(match);
+      }
+    } else if (e.key === "Escape") {
+      closeMenu();
     }
   });
 
   const deepLink = new URLSearchParams(location.search).get("council");
   if (deepLink && DATA.councils[deepLink]) {
     input.value = deepLink;
-    if (select) select.value = deepLink;
     renderCouncil(deepLink);
   } else {
     // Start blank without pre-selecting a council
     input.value = "";
-    if (select) select.value = "";
     const panels = el("council-data-panels");
     if (panels) panels.style.display = "none";
     const prompt = el("council-prompt");
@@ -161,8 +213,6 @@ function renderCouncil(name) {
 
   const input = el("council-input");
   if (input && input.value !== name) input.value = name;
-  const select = el("council-select");
-  if (select && select.value !== name) select.value = name;
 
   renderControlLine(c);
   renderElectionBanner(c);
@@ -887,10 +937,53 @@ function drawLeagueTable(lt) {
   });
 }
 
+function initFeedbackForm() {
+  const form = el("feedback-form");
+  const status = el("feedback-status");
+  const btn = el("feedback-submit-btn");
+  if (!form || form.dataset.wired) return;
+  form.dataset.wired = "1";
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (btn) btn.disabled = true;
+    if (status) {
+      status.style.color = "var(--ink-soft)";
+      status.textContent = "Sending your note…";
+    }
+
+    const formData = new FormData(form);
+    fetch("https://formsubmit.co/ajax/parthgoyal60@gmail.com", {
+      method: "POST",
+      headers: {
+        "Accept": "application/json"
+      },
+      body: formData
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (btn) btn.disabled = false;
+        if (status) {
+          status.style.color = "#166534";
+          status.textContent = "✓ Thank you! Your feedback has been received.";
+        }
+        form.reset();
+      })
+      .catch((err) => {
+        if (btn) btn.disabled = false;
+        if (status) {
+          status.style.color = "var(--stamp)";
+          status.textContent = "Could not send directly. Please email parthgoyal60@gmail.com.";
+        }
+      });
+  });
+}
+
 // -------------------------------------------------------------- init ---
 window.addEventListener("DOMContentLoaded", () => {
   initTabs();
-  fetch("data.json?v=20260824c")
+  initFeedbackForm();
+  fetch("data.json?v=20260824e")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
