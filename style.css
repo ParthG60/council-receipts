@@ -807,6 +807,14 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
   margin-bottom: 6px;
 }
 
+.qol-rank-tag {
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--paper);
+  padding: 1px 5px;
+  border: 1px solid var(--rule);
+}
+
 .qol-sub {
   font-family: var(--mono);
   font-size: 0.68rem;

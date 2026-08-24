@@ -328,20 +328,19 @@ def main():
                 continue
             qol_by_code[code] = {
                 "life_expectancy": qr["life_expectancy"],
-                "rent_affordability": qr["rent_affordability"],
+                "life_expectancy_rank": int(qr["life_expectancy_rank"]) if pd.notna(qr["life_expectancy_rank"]) else None,
                 "attainment8": qr["attainment8"],
+                "attainment8_rank": int(qr["attainment8_rank"]) if pd.notna(qr["attainment8_rank"]) else None,
+                "rent_affordability": qr["rent_affordability"],
+                "rent_affordability_rank": int(qr["rent_affordability_rank"]) if pd.notna(qr["rent_affordability_rank"]) else None,
                 "air_quality_pm25_pct": qr["air_quality_pm25_pct"],
+                "air_quality_rank": int(qr["air_quality_rank"]) if pd.notna(qr["air_quality_rank"]) else None,
                 "child_poverty_pct": qr["child_poverty_pct"],
+                "child_poverty_rank": int(qr["child_poverty_rank"]) if pd.notna(qr["child_poverty_rank"]) else None,
                 "claimant_rate_pct": qr["claimant_rate_pct"],
+                "claimant_rate_rank": int(qr["claimant_rate_rank"]) if pd.notna(qr["claimant_rate_rank"]) else None,
                 "crime_per_1000": qr["crime_per_1000"],
-                "overall_imd": {
-                    "score": qr["imd_score"],
-                    "decile": int(qr["imd_decile"]) if pd.notna(qr["imd_decile"]) else None,
-                    "rank": int(qr["imd_rank"]) if pd.notna(qr["imd_rank"]) else None,
-                    "pool_n": int(qr["imd_pool_n"]) if pd.notna(qr["imd_pool_n"]) else None,
-                    "tier": qr["imd_tier"],
-                    "national_rank": int(qr["imd_national_rank"]) if pd.notna(qr["imd_national_rank"]) else None,
-                } if pd.notna(qr["imd_score"]) else None
+                "crime_rank": int(qr["crime_rank"]) if pd.notna(qr["crime_rank"]) else None,
             }
 
     distress_df = read_csv_optional(ENG_DIR / "financial_distress.csv")

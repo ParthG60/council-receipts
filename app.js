@@ -612,6 +612,7 @@ function renderQoL(c) {
     {
       label: "Life Expectancy",
       val: q.life_expectancy != null ? `${q.life_expectancy} yrs` : "—",
+      rank: q.life_expectancy_rank,
       eng: eng.life_expectancy != null ? `${eng.life_expectancy} yrs` : "81.9 yrs",
       note: "Period life expectancy at birth across sexes (ONS 2025).",
       higherGood: true,
@@ -621,6 +622,7 @@ function renderQoL(c) {
     {
       label: "GCSE Attainment 8",
       val: q.attainment8 != null ? `${q.attainment8} pts` : "—",
+      rank: q.attainment8_rank,
       eng: eng.attainment8 != null ? `${eng.attainment8} pts` : "46.1 pts",
       note: "Average GCSE Attainment 8 score per pupil across 8 subjects (DfE 2023/24).",
       higherGood: true,
@@ -630,6 +632,7 @@ function renderQoL(c) {
     {
       label: "Rent Affordability",
       val: q.rent_affordability != null ? `${q.rent_affordability}%` : "—",
+      rank: q.rent_affordability_rank,
       eng: eng.rent_affordability != null ? `${eng.rent_affordability}%` : "31.0%",
       note: "Median private rent as a % of median gross full-time earnings (ONS PIPR/ASHE).",
       higherGood: false,
@@ -639,6 +642,7 @@ function renderQoL(c) {
     {
       label: "Air Quality (PM2.5)",
       val: q.air_quality_pm25_pct != null ? `${q.air_quality_pm25_pct}%` : "—",
+      rank: q.air_quality_rank,
       eng: eng.air_quality_pm25_pct != null ? `${eng.air_quality_pm25_pct}%` : "5.3%",
       note: "Estimated % of adult all-cause mortality attributable to human-made fine particulate air pollution PM2.5 (Defra/OHID).",
       higherGood: false,
@@ -648,6 +652,7 @@ function renderQoL(c) {
     {
       label: "Child Poverty",
       val: q.child_poverty_pct != null ? `${q.child_poverty_pct}%` : "—",
+      rank: q.child_poverty_rank,
       eng: eng.child_poverty_pct != null ? `${eng.child_poverty_pct}%` : "19.8%",
       note: "Share of children aged under 16 living in families in relative low income (DWP).",
       higherGood: false,
@@ -657,6 +662,7 @@ function renderQoL(c) {
     {
       label: "Claimant Rate",
       val: q.claimant_rate_pct != null ? `${q.claimant_rate_pct}%` : "—",
+      rank: q.claimant_rate_rank,
       eng: eng.claimant_rate_pct != null ? `${eng.claimant_rate_pct}%` : "4.0%",
       note: "Universal Credit / JSA claimants as a % of resident population aged 16-64 (Nomis July 2026).",
       higherGood: false,
@@ -666,6 +672,7 @@ function renderQoL(c) {
     {
       label: "Crime Rate",
       val: q.crime_per_1000 != null ? `${q.crime_per_1000}` : "—",
+      rank: q.crime_rank,
       eng: eng.crime_per_1000 != null ? `${eng.crime_per_1000}` : "89.5",
       note: "Total recorded offences (excluding fraud) per 1,000 residents (ONS CSP 2024).",
       higherGood: false,
@@ -683,6 +690,7 @@ function renderQoL(c) {
       const cls = Math.abs(diff) < 0.2 ? "neutral" : isBetter ? "better" : "worse";
       diffBadge = `<span class="qol-tag ${cls}">${sign}${diff.toFixed(1)} vs England</span>`;
     }
+    const rankTxt = item.rank != null ? `<span class="qol-rank-tag">Rank #${item.rank}</span>` : "";
     return `
       <div class="qol-card">
         <div class="qol-header">
@@ -690,7 +698,7 @@ function renderQoL(c) {
           ${diffBadge}
         </div>
         <div class="qol-value">${item.val}</div>
-        <div class="qol-benchmark">England: <strong>${item.eng}</strong></div>
+        <div class="qol-benchmark">${rankTxt} · England: <strong>${item.eng}</strong></div>
         <div class="qol-sub">${item.note}</div>
       </div>`;
   }).join("");
@@ -876,11 +884,21 @@ function drawLeagueTable(lt) {
     { key: "crime_per_1000", label: "Crime / 1k", unit: "" },
   ];
 
+  // 1. Sort all rows and assign global sort rank
   const allSorted = sortedLeagueRows(lt);
-  const rows = leagueTopN === "all" ? allSorted : allSorted.slice(0, leagueTopN);
+  allSorted.forEach((r, idx) => { r._globalRank = idx + 1; });
+
+  // 2. Filter by search query if present
+  let displayRows = allSorted;
+  if (leagueSearchQuery) {
+    displayRows = displayRows.filter((r) => (r.council || "").toLowerCase().includes(leagueSearchQuery));
+  }
+
+  // 3. Slice by active top N
+  const rows = leagueTopN === "all" ? displayRows : displayRows.slice(0, leagueTopN);
 
   const rowsHtml = rows
-    .map((r, i) => {
+    .map((r) => {
       const cells = cols.map((col) => {
         const val = r[col.key];
         if (col.key === "council") {
@@ -892,12 +910,12 @@ function drawLeagueTable(lt) {
         if (val == null) return `<td>—</td>`;
         return `<td>${val}${col.unit}</td>`;
       });
-      return `<tr><td class="rank-cell">${i + 1}</td>${cells.join("")}</tr>`;
+      return `<tr><td class="rank-cell">#${r._globalRank}</td>${cells.join("")}</tr>`;
     })
     .join("");
 
   const headHtml =
-    `<th class="rank-cell">#</th>` +
+    `<th class="rank-cell">Rank</th>` +
     cols
       .map((col) => {
         const active = leagueSort.col === col.key;
@@ -973,7 +991,7 @@ function initFeedbackForm() {
 window.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initFeedbackForm();
-  fetch("data.json?v=20260824h")
+  fetch("data.json?v=20260824i")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
