@@ -127,12 +127,13 @@ function renderCouncil(name) {
 
   renderControlLine(c);
   renderElectionBanner(c);
+  renderDistress(c);
   renderPopulation(c);
   renderAgeChart(c);
   renderTopicsChart(c, name);
   renderMoneyChart(c);
   renderTalkVsSpend(c);
-  renderScorecard(c);
+  renderQoL(c);
   renderReadingLinks(c);
   renderTaxonomyTable();
 }
@@ -453,26 +454,159 @@ function decileColor(decile) {
   return t < 0.5 ? lerpHex(GOOD, MID, t * 2) : lerpHex(MID, BAD, (t - 0.5) * 2);
 }
 
-function renderScorecard(c) {
-  const hasData = c.scorecard && c.scorecard.length;
-  showPanel("panel-scorecard", !!hasData);
-  if (!hasData) return;
-  const tierLabel = c.tier === "upper" ? "county councils" : "districts/unitaries";
-  el("scorecard-heat").innerHTML = c.scorecard
-    .map((m) => {
-      const bg = decileColor(m.decile);
-      const fg = textOnColor(bg);
-      const decileTxt = m.decile != null ? `Decile ${m.decile} of 10` : "—";
-      const ordTxt = m.decile != null ? `${ordinal(m.decile)} most-deprived tenth` : "";
-      const rankTxt = m.rank != null ? `rank ${m.rank} of ${m.pool_n} ${tierLabel}` : "";
-      const prop10Txt = m.prop10 != null ? `${Math.round(m.prop10 * 100)}% of areas in England's most-deprived 10%` : "";
-      return `<div class="heat-cell" style="background:${bg};color:${fg}">
-        <div class="heat-label">${m.label}</div>
-        <div class="heat-value">${decileTxt}</div>
-        <div class="heat-sub">${ordTxt}${rankTxt ? " · " + rankTxt : ""}${prop10Txt ? " · " + prop10Txt : ""}</div>
+function renderDistress(c) {
+  const d = c.financial_distress;
+  showPanel("panel-distress", !!d);
+  if (!d) return;
+
+  const box = el("distress-status-box");
+  let statusHtml = "";
+  if (d.severity === 3) {
+    statusHtml = `
+      <div class="distress-banner critical">
+        <div class="distress-status-header">
+          <span class="distress-icon">⚠️</span>
+          <strong>CRITICAL FINANCIAL DISTRESS: Section 114 Notice Issued (${d.s114_year || "Active"})</strong>
+        </div>
+        <p class="distress-desc">${d.s114_details}</p>
+        ${d.is_efs ? `<p class="distress-extra"><strong>Government Intervention:</strong> ${d.efs_details}</p>` : ""}
       </div>`;
-    })
-    .join("");
+  } else if (d.severity === 2) {
+    statusHtml = `
+      <div class="distress-banner high">
+        <div class="distress-status-header">
+          <span class="distress-icon">⚡</span>
+          <strong>HIGH FINANCIAL RISK: Exceptional Financial Support (£${d.efs_amount_gbp_m}m)</strong>
+        </div>
+        <p class="distress-desc">${d.efs_details}</p>
+      </div>`;
+  } else if (d.severity === 1) {
+    statusHtml = `
+      <div class="distress-banner warning">
+        <div class="distress-status-header">
+          <span class="distress-icon">ℹ️</span>
+          <strong>ELEVATED AUDIT RISK: Statutory External Warning / Account Delays</strong>
+        </div>
+        <p class="distress-desc">Under statutory external auditor recommendation or commissioner monitoring.</p>
+      </div>`;
+  } else {
+    statusHtml = `
+      <div class="distress-banner stable">
+        <div class="distress-status-header">
+          <span class="distress-icon">✓</span>
+          <strong>STABLE FINANCIAL STANDING</strong>
+        </div>
+        <p class="distress-desc">No active Section 114 spending freeze notices or emergency MHCLG Exceptional Financial Support directions recorded.</p>
+      </div>`;
+  }
+  box.innerHTML = statusHtml;
+}
+
+function renderQoL(c) {
+  const q = c.qol;
+  showPanel("panel-qol", !!q);
+  if (!q) return;
+
+  const eng = DATA.qol_england || {};
+  const tierLabel = c.tier === "upper" ? "county councils" : "districts/unitaries";
+
+  // Overall IMD card
+  let imdHtml = "";
+  if (q.overall_imd) {
+    const imd = q.overall_imd;
+    const bg = decileColor(imd.decile);
+    const fg = textOnColor(bg);
+    const decileTxt = imd.decile != null ? `Decile ${imd.decile} of 10` : "—";
+    const ordTxt = imd.decile != null ? `${ordinal(imd.decile)} most-deprived tenth` : "";
+    const rankTxt = imd.rank != null ? `Rank ${imd.rank} of ${imd.pool_n} ${tierLabel}` : "";
+    imdHtml = `
+      <div class="qol-card imd-card" style="border-left: 5px solid ${bg};">
+        <div class="qol-label">Overall Deprivation (IoD2025)</div>
+        <div class="qol-value" style="color:${bg === '#f7f7f7' ? 'var(--ink)' : bg}; font-weight:700;">${decileTxt}</div>
+        <div class="qol-sub">${ordTxt} · ${rankTxt}</div>
+      </div>`;
+  }
+
+  // 6 Outcome Indicators
+  const items = [
+    {
+      label: "Life Expectancy",
+      val: q.life_expectancy != null ? `${q.life_expectancy} yrs` : "—",
+      eng: eng.life_expectancy != null ? `${eng.life_expectancy} yrs` : "81.9 yrs",
+      note: "Period life expectancy at birth (ONS 2025)",
+      higherGood: true,
+      valNum: q.life_expectancy,
+      engNum: eng.life_expectancy || 81.9,
+    },
+    {
+      label: "Rent Affordability",
+      val: q.rent_affordability != null ? `${q.rent_affordability}%` : "—",
+      eng: eng.rent_affordability != null ? `${eng.rent_affordability}%` : "31.0%",
+      note: "Median rent as % of gross FT earnings (ONS)",
+      higherGood: false,
+      valNum: q.rent_affordability,
+      engNum: eng.rent_affordability || 31.0,
+    },
+    {
+      label: "Air Quality (PM2.5)",
+      val: q.air_quality_pm25_pct != null ? `${q.air_quality_pm25_pct}%` : "—",
+      eng: eng.air_quality_pm25_pct != null ? `${eng.air_quality_pm25_pct}%` : "5.3%",
+      note: "Mortality attributable to PM2.5 pollution (Defra)",
+      higherGood: false,
+      valNum: q.air_quality_pm25_pct,
+      engNum: eng.air_quality_pm25_pct || 5.3,
+    },
+    {
+      label: "Child Poverty",
+      val: q.child_poverty_pct != null ? `${q.child_poverty_pct}%` : "—",
+      eng: eng.child_poverty_pct != null ? `${eng.child_poverty_pct}%` : "19.8%",
+      note: "Children in low income families (DWP)",
+      higherGood: false,
+      valNum: q.child_poverty_pct,
+      engNum: eng.child_poverty_pct || 19.8,
+    },
+    {
+      label: "Claimant / Unemployment",
+      val: q.claimant_rate_pct != null ? `${q.claimant_rate_pct}%` : "—",
+      eng: eng.claimant_rate_pct != null ? `${eng.claimant_rate_pct}%` : "4.0%",
+      note: "Claimants % of 16-64 population (Nomis 2026)",
+      higherGood: false,
+      valNum: q.claimant_rate_pct,
+      engNum: eng.claimant_rate_pct || 4.0,
+    },
+    {
+      label: "Crime Rate",
+      val: q.crime_per_1000 != null ? `${q.crime_per_1000}` : "—",
+      eng: eng.crime_per_1000 != null ? `${eng.crime_per_1000}` : "89.5",
+      note: "Recorded offences per 1,000 pop (ONS)",
+      higherGood: false,
+      valNum: q.crime_per_1000,
+      engNum: eng.crime_per_1000 || 89.5,
+    },
+  ];
+
+  const cardsHtml = items.map((item) => {
+    let diffBadge = "";
+    if (item.valNum != null && item.engNum != null) {
+      const diff = item.valNum - item.engNum;
+      const isBetter = item.higherGood ? diff > 0 : diff < 0;
+      const sign = diff > 0 ? "+" : "";
+      const cls = Math.abs(diff) < 0.2 ? "neutral" : isBetter ? "better" : "worse";
+      diffBadge = `<span class="qol-tag ${cls}">${sign}${diff.toFixed(1)} vs England</span>`;
+    }
+    return `
+      <div class="qol-card">
+        <div class="qol-header">
+          <span class="qol-label">${item.label}</span>
+          ${diffBadge}
+        </div>
+        <div class="qol-value">${item.val}</div>
+        <div class="qol-benchmark">England: <strong>${item.eng}</strong></div>
+        <div class="qol-sub">${item.note}</div>
+      </div>`;
+  }).join("");
+
+  el("qol-grid").innerHTML = imdHtml + cardsHtml;
 }
 
 function renderReadingLinks(c) {
@@ -496,9 +630,42 @@ function renderTaxonomyTable() {
 
 // ------------------------------------------------------- national view ---
 function renderNational() {
+  renderDistressWatchlist();
   renderPartyChart("party-chart", "party-key", DATA.party_groups_spend, "spend_share");
   renderPartyChart("party-discussion-chart", "party-discussion-key", DATA.party_groups_discussion, "discussion_share");
   renderLeagueTable();
+}
+
+function renderDistressWatchlist() {
+  const wrap = el("distress-watchlist-wrap");
+  const list = DATA.distress_watchlist || [];
+  if (!list.length) {
+    showPanel("panel-distress-national", false);
+    return;
+  }
+  showPanel("panel-distress-national", true);
+
+  const rows = list.map((item) => {
+    const is114 = item.severity === 3;
+    const badgeCls = is114 ? "distress-chip critical" : "distress-chip high";
+    const statusTxt = is114 ? `Section 114 (${item.s114_year || "Active"})` : `EFS Support (£${item.efs_m}m)`;
+    return `
+      <tr>
+        <td><a href="?council=${encodeURIComponent(item.council)}" class="council-link">${item.council}</a></td>
+        <td><span class="${badgeCls}">${statusTxt}</span></td>
+      </tr>`;
+  }).join("");
+
+  wrap.innerHTML = `
+    <table class="league distress-table">
+      <thead>
+        <tr>
+          <th>Local Authority</th>
+          <th>Distress Status / Intervention</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
 }
 
 function renderPartyChart(chartId, keyId, groups, shareKey) {

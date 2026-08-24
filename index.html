@@ -77,10 +77,16 @@
       <p class="caption" id="tvs-caption"></p>
     </section>
 
-    <section class="panel" id="panel-scorecard">
-      <h2>Deprivation scorecard</h2>
-      <div id="scorecard-heat" class="heat-strip"></div>
-      <p class="caption">English Indices of Deprivation 2025 (IoD2025, MHCLG). Colour: magenta = more deprived, green = less. Ranks are within tier — districts/unitaries out of 296, county councils out of 153.</p>
+    <section class="panel" id="panel-distress">
+      <h2>Financial health & distress check</h2>
+      <div id="distress-status-box"></div>
+      <p class="caption" id="distress-caption">Source: MHCLG Section 114 statutory notices & Exceptional Financial Support (EFS) capitalisation records (2024–2026).</p>
+    </section>
+
+    <section class="panel" id="panel-qol">
+      <h2>Quality of life & deprivation</h2>
+      <div id="qol-grid" class="qol-grid"></div>
+      <p class="caption">Sources: ONS Health State Life Expectancies (2025) · ONS Private Rent Affordability (PIPR/ASHE) · Defra/OHID PM2.5 Mortality Fraction · DWP Children in Low Income Families · Nomis Claimant Count (July 2026) · ONS CSP Crime · MHCLG IoD2025.</p>
     </section>
 
     <section class="panel" id="panel-links">
@@ -105,6 +111,13 @@
 
   <!-- ============================== NATIONAL TAB ============================== -->
   <section id="tab-national" class="tab-panel">
+
+    <section class="panel panel-wide" id="panel-distress-national">
+      <h2>Financial distress watchlist</h2>
+      <p class="lede">English local authorities operating under statutory Section 114 spending freezes or MHCLG Exceptional Financial Support (EFS) capitalisation directives.</p>
+      <div id="distress-watchlist-wrap"></div>
+      <p class="caption">Source: Ministry of Housing, Communities and Local Government (MHCLG) official financial intervention registers.</p>
+    </section>
 
     <section class="panel panel-wide" id="panel-party">
       <h2>Where the budget goes, by party</h2>
@@ -162,24 +175,16 @@
     </section>
 
     <section class="panel" id="panel-comments">
-      <h2>Comments</h2>
-      <p>Leave a note or a reaction here. Comments are powered by GitHub Discussions, so you'll need a free GitHub account to post, though anyone can read them. I read all of them, and the best suggestions tend to end up on the list above.</p>
-      <div class="giscus"></div>
-      <script src="https://giscus.app/client.js"
-        data-repo="ParthG60/council-receipts"
-        data-repo-id="R_kgDOUAyrZA"
-        data-category="General"
-        data-category-id="DIC_kwDOUAyrZM4DD9fu"
-        data-mapping="pathname"
-        data-strict="0"
-        data-reactions-enabled="1"
-        data-emit-metadata="0"
-        data-input-position="top"
-        data-theme="light"
-        data-lang="en"
-        crossorigin="anonymous"
-        async>
-      </script>
+      <h2>Open feedback & comments</h2>
+      <p>Leave a note, flag a correction, or share thoughts. No account or login required—post with your name or anonymously.</p>
+      <div id="cusdis_thread"
+        data-host="https://cusdis.com"
+        data-app-id="parth-council-receipts"
+        data-page-id="council-receipts-main"
+        data-page-url="https://parthgoyal.uk/council-receipts/"
+        data-page-title="Council Receipts">
+      </div>
+      <script async defer src="https://cusdis.com/js/cusdis.es.js"></script>
     </section>
 
   </section>

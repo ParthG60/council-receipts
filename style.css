@@ -516,6 +516,163 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
   font-style: italic;
 }
 
+/* -------------------------------------------------- financial distress --- */
+.distress-banner {
+  padding: 14px 18px;
+  border-left: 4px solid var(--rule);
+  background: var(--paper);
+  margin-bottom: 12px;
+  font-family: var(--mono);
+}
+
+.distress-banner.critical {
+  border-left-color: var(--stamp);
+  background: #fdf2f0;
+}
+
+.distress-banner.high {
+  border-left-color: #d97706;
+  background: #fef8ee;
+}
+
+.distress-banner.warning {
+  border-left-color: #eab308;
+  background: #fefce8;
+}
+
+.distress-banner.stable {
+  border-left-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.distress-status-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  margin-bottom: 6px;
+}
+
+.distress-desc {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.distress-extra {
+  font-size: 0.78rem;
+  color: var(--stamp);
+  margin: 6px 0 0;
+}
+
+.distress-chip {
+  display: inline-block;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-family: var(--mono);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.distress-chip.critical {
+  color: #fff;
+  background: var(--stamp);
+}
+
+.distress-chip.high {
+  color: #fff;
+  background: #d97706;
+}
+
+/* ---------------------------------------------------- quality of life --- */
+.qol-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.qol-card {
+  background: var(--receipt);
+  border: 1px solid var(--rule);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.qol-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.qol-label {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+}
+
+.qol-value {
+  font-family: var(--mono);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+
+.qol-benchmark {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+
+.qol-sub {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  color: var(--faint);
+  margin-top: auto;
+  line-height: 1.4;
+}
+
+.qol-tag {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-weight: 600;
+  padding: 2px 5px;
+}
+
+.qol-tag.better {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.qol-tag.worse {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.qol-tag.neutral {
+  color: var(--ink-soft);
+  background: var(--paper);
+}
+
+.council-link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.council-link:hover {
+  color: var(--stamp);
+}
+
 /* -------------------------------------------------------------- footer --- */
 .receipt-footer {
   text-align: center;

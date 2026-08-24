@@ -71,8 +71,8 @@ DOMAIN_LABELS = {
     "Barriers": "Barriers to housing & services",
     "Living": "Living environment",
 }
-# fixed National-view bucket order (matches control_all.py buckets)
-BUCKET_ORDER = ["Labour", "Conservative", "Liberal Democrat", "Reform UK", "Green", "Independent/Other"]
+# fixed National-view bucket order (matches control_all.py buckets, excludes Independent/Other)
+BUCKET_ORDER = ["Labour", "Conservative", "Liberal Democrat", "Reform UK", "Green"]
 
 AGE_BAND_ORDER = ["0-15", "16-29", "30-44", "45-64", "65+"]
 
@@ -286,7 +286,74 @@ def main():
 
     elections = read_csv_optional(DATA_DIR / "elections.csv")
     reading_links = read_csv_optional(DATA_DIR / "reading_links.csv")
-    age_bands = read_csv_optional(DATA_DIR / "age_bands.csv")
+    age_bands = read_csv_optional(ENG_DIR / "age_bands_all.csv")
+    if age_bands is None:
+        age_bands = read_csv_optional(DATA_DIR / "age_bands.csv")
+
+    # ---- Quality of Life (QoL) & Financial Distress datasets ----------------
+    qol_df = read_csv_optional(ENG_DIR / "qol_all.csv")
+    qol_by_code = {}
+    qol_england = {}
+    if qol_df is not None:
+        eng_row = qol_df[qol_df["ons_code"] == "E92000001"]
+        if not eng_row.empty:
+            er = eng_row.iloc[0]
+            qol_england = {
+                "life_expectancy": er["life_expectancy"],
+                "rent_affordability": er["rent_affordability"],
+                "air_quality_pm25_pct": er["air_quality_pm25_pct"],
+                "child_poverty_pct": er["child_poverty_pct"],
+                "claimant_rate_pct": er["claimant_rate_pct"],
+                "crime_per_1000": er["crime_per_1000"],
+            }
+        for _, qr in qol_df.iterrows():
+            code = qr["ons_code"]
+            if code == "E92000001":
+                continue
+            qol_by_code[code] = {
+                "life_expectancy": qr["life_expectancy"],
+                "rent_affordability": qr["rent_affordability"],
+                "air_quality_pm25_pct": qr["air_quality_pm25_pct"],
+                "child_poverty_pct": qr["child_poverty_pct"],
+                "claimant_rate_pct": qr["claimant_rate_pct"],
+                "crime_per_1000": qr["crime_per_1000"],
+                "overall_imd": {
+                    "score": qr["imd_score"],
+                    "decile": int(qr["imd_decile"]) if pd.notna(qr["imd_decile"]) else None,
+                    "rank": int(qr["imd_rank"]) if pd.notna(qr["imd_rank"]) else None,
+                    "pool_n": int(qr["imd_pool_n"]) if pd.notna(qr["imd_pool_n"]) else None,
+                    "tier": qr["imd_tier"],
+                } if pd.notna(qr["imd_score"]) else None
+            }
+
+    distress_df = read_csv_optional(ENG_DIR / "financial_distress.csv")
+    distress_by_code = {}
+    distress_watchlist = []
+    if distress_df is not None:
+        for _, dr in distress_df.iterrows():
+            code = dr["ons_code"]
+            d_rec = {
+                "is_s114": bool(dr["is_s114"]),
+                "s114_year": int(dr["s114_year"]) if pd.notna(dr["s114_year"]) else None,
+                "s114_details": dr["s114_details"] if pd.notna(dr["s114_details"]) else "",
+                "is_efs": bool(dr["is_efs"]),
+                "efs_amount_gbp_m": float(dr["efs_amount_gbp_m"]) if pd.notna(dr["efs_amount_gbp_m"]) else None,
+                "efs_details": dr["efs_details"] if pd.notna(dr["efs_details"]) else "",
+                "is_audit_delayed": bool(dr["is_audit_delayed"]),
+                "distress_status": dr["distress_status"],
+                "severity": int(dr["severity"]),
+            }
+            distress_by_code[code] = d_rec
+            if d_rec["severity"] > 0:
+                distress_watchlist.append({
+                    "council": dr["council"],
+                    "ons_code": code,
+                    "status": dr["distress_status"],
+                    "severity": d_rec["severity"],
+                    "efs_m": d_rec["efs_amount_gbp_m"],
+                    "s114_year": d_rec["s114_year"],
+                })
+        distress_watchlist.sort(key=lambda x: -x["severity"])
 
     # ---- per-council derived: money, money_share, talk_vs_spend, topic_share ----
     council_names = sorted(r["name"] for r in reg.values())
@@ -420,6 +487,8 @@ def main():
             "money_share": m_share,
             "talk_vs_spend": tvs,
             "scorecard": scorecard.get(code, []),
+            "qol": qol_by_code.get(code),
+            "financial_distress": distress_by_code.get(code),
             "reading_links": links,
         }
 
@@ -432,6 +501,8 @@ def main():
         "money_median_per_resident": money_median,
         "money_median_n": money_median_n,
         "finance_topics_england": ft_england,
+        "qol_england": qol_england,
+        "distress_watchlist": distress_watchlist,
         "age_bands_mode": age_mode,
         "age_bands_order": AGE_BAND_ORDER,
         "age_bands_england": age_bands_england,
@@ -472,6 +543,8 @@ def main():
         "with_money_share": sum(1 for c in out_councils.values() if c["money_share"]),
         "with_talk_vs_spend": sum(1 for c in out_councils.values() if c["talk_vs_spend"]),
         "with_scorecard": sum(1 for c in out_councils.values() if c["scorecard"]),
+        "with_qol": sum(1 for c in out_councils.values() if c.get("qol")),
+        "with_financial_distress": sum(1 for c in out_councils.values() if c.get("financial_distress")),
         "with_control": sum(1 for c in out_councils.values() if c["control"]),
         "with_reading_links": sum(1 for c in out_councils.values() if c["reading_links"]),
         "party_groups_spend": len(party_groups_spend),
