@@ -597,29 +597,8 @@ function renderQoL(c) {
   if (!q) return;
 
   const eng = DATA.qol_england || {};
-  const tierLabel = c.tier === "upper" ? "county councils" : "districts/unitaries";
 
-  // Overall IMD card
-  let imdHtml = "";
-  if (q.overall_imd) {
-    const imd = q.overall_imd;
-    const bg = decileColor(imd.decile);
-    const fg = textOnColor(bg);
-    const natRankTxt = imd.national_rank != null ? `Rank #${imd.national_rank} in England` : (imd.rank != null ? `Rank #${imd.rank} in pool` : "—");
-    const decileTxt = imd.decile != null ? `Decile ${imd.decile} of 10 (${ordinal(imd.decile)} most-deprived tenth)` : "";
-    imdHtml = `
-      <div class="qol-card imd-card" style="border-left: 5px solid ${bg};">
-        <div class="qol-header">
-          <span class="qol-label">Overall Deprivation (IoD2025)</span>
-          <span class="qol-tag" style="background:${bg};color:${fg};font-weight:700;">Decile ${imd.decile ?? "—"}</span>
-        </div>
-        <div class="qol-value" style="color:${bg === '#f7f7f7' ? 'var(--ink)' : bg}; font-weight:700;">${natRankTxt}</div>
-        <div class="qol-benchmark">${decileTxt}</div>
-        <div class="qol-sub">Official MHCLG Indices of Deprivation 2025 combining 55 indicators across 7 domains (income, jobs, health, education, crime, housing, environment). 1 = most deprived.</div>
-      </div>`;
-  }
-
-  // 6 Outcome Indicators
+  // 7 Outcome Indicators
   const items = [
     {
       label: "Life Expectancy",
@@ -629,6 +608,15 @@ function renderQoL(c) {
       higherGood: true,
       valNum: q.life_expectancy,
       engNum: eng.life_expectancy || 81.9,
+    },
+    {
+      label: "GCSE Attainment 8",
+      val: q.attainment8 != null ? `${q.attainment8} pts` : "—",
+      eng: eng.attainment8 != null ? `${eng.attainment8} pts` : "46.1 pts",
+      note: "Average GCSE Attainment 8 score per pupil across 8 subjects (DfE 2023/24).",
+      higherGood: true,
+      valNum: q.attainment8,
+      engNum: eng.attainment8 || 46.1,
     },
     {
       label: "Rent Affordability",
@@ -698,7 +686,7 @@ function renderQoL(c) {
       </div>`;
   }).join("");
 
-  el("qol-grid").innerHTML = imdHtml + cardsHtml;
+  el("qol-grid").innerHTML = cardsHtml;
 }
 
 function renderReadingLinks(c) {
@@ -816,9 +804,9 @@ function renderLeagueTable() {
     showPanel("league-toggle", false);
     return;
   }
-  if (!leagueSort) leagueSort = { col: "imd_national_rank", asc: true };
+  if (!leagueSort) leagueSort = { col: "life_expectancy", asc: false };
   el("league-caption").textContent =
-    "Sorted by Overall Deprivation Rank in England (1 = most deprived) by default. Click any column header to sort by that indicator. Use search box to quickly find your council.";
+    "Ranked by Quality of Life indicators across England. Click any column header to re-sort. Filter rows by council name using the search bar.";
 
   // Wire search input
   const searchInput = el("league-search");
@@ -870,8 +858,8 @@ function drawLeagueTable(lt) {
   const cols = [
     { key: "council", label: "Council", unit: "" },
     { key: "control", label: "Control", unit: "" },
-    { key: "imd_national_rank", label: "Deprivation Rank", unit: "/282" },
     { key: "life_expectancy", label: "Life Exp.", unit: " yrs" },
+    { key: "attainment8", label: "GCSE Score", unit: " pts" },
     { key: "rent_affordability", label: "Rent Afford.", unit: "%" },
     { key: "child_poverty_pct", label: "Child Poverty", unit: "%" },
     { key: "claimant_rate_pct", label: "Claimant %", unit: "%" },
@@ -893,13 +881,6 @@ function drawLeagueTable(lt) {
           return `<td>${val ?? "—"}</td>`;
         }
         if (val == null) return `<td>—</td>`;
-        
-        if (col.key === "imd_national_rank") {
-          const decile = Math.min(10, Math.max(1, Math.ceil(val / 28.2)));
-          const bg = decileColor(decile);
-          const fg = textOnColor(bg);
-          return `<td><span class="decile-chip" style="background:${bg};color:${fg}">#${val}</span></td>`;
-        }
         return `<td>${val}${col.unit}</td>`;
       });
       return `<tr><td class="rank-cell">${i + 1}</td>${cells.join("")}</tr>`;
@@ -929,8 +910,8 @@ function drawLeagueTable(lt) {
       if (leagueSort.col === col) {
         leagueSort.asc = !leagueSort.asc;
       } else {
-        // default direction: rank ascending, life expectancy descending, rates ascending
-        leagueSort = { col, asc: col === "imd_national_rank" || col === "council" || col === "control" };
+        const higherIsBetter = col === "life_expectancy" || col === "attainment8";
+        leagueSort = { col, asc: higherIsBetter ? false : (col === "council" || col === "control") };
       }
       drawLeagueTable(lt);
     });
@@ -983,7 +964,7 @@ function initFeedbackForm() {
 window.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initFeedbackForm();
-  fetch("data.json?v=20260824e")
+  fetch("data.json?v=20260824g")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;

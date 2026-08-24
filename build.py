@@ -301,6 +301,7 @@ def main():
             qol_england = {
                 "life_expectancy": er["life_expectancy"],
                 "rent_affordability": er["rent_affordability"],
+                "attainment8": er["attainment8"],
                 "air_quality_pm25_pct": er["air_quality_pm25_pct"],
                 "child_poverty_pct": er["child_poverty_pct"],
                 "claimant_rate_pct": er["claimant_rate_pct"],
@@ -313,6 +314,7 @@ def main():
             qol_by_code[code] = {
                 "life_expectancy": qr["life_expectancy"],
                 "rent_affordability": qr["rent_affordability"],
+                "attainment8": qr["attainment8"],
                 "air_quality_pm25_pct": qr["air_quality_pm25_pct"],
                 "child_poverty_pct": qr["child_poverty_pct"],
                 "claimant_rate_pct": qr["claimant_rate_pct"],
@@ -420,10 +422,10 @@ def main():
     party_groups_spend = party_groups(ft_shares, bucket_of, "spend_share")
     party_groups_discussion = party_groups(disc_share_by_name, bucket_of, "discussion_share")
 
-    # ---- league table (all councils, QoL + IMD indicators) -------------------
+    # ---- league table (all councils, QoL indicators) -------------------------
     QOL_INDICATORS = [
-        {"id": "imd_national_rank", "label": "Deprivation Rank", "unit": "/282", "lower_better": True},
-        {"id": "life_expectancy", "label": "Life Expectancy", "unit": "yrs", "lower_better": False},
+        {"id": "life_expectancy", "label": "Life Expectancy", "unit": " yrs", "lower_better": False},
+        {"id": "attainment8", "label": "GCSE Attainment", "unit": " pts", "lower_better": False},
         {"id": "rent_affordability", "label": "Rent Affordability", "unit": "%", "lower_better": True},
         {"id": "child_poverty_pct", "label": "Child Poverty", "unit": "%", "lower_better": True},
         {"id": "claimant_rate_pct", "label": "Claimant Rate", "unit": "%", "lower_better": True},
@@ -435,7 +437,6 @@ def main():
     for code, r in reg.items():
         ctrl = control.get(code, {})
         q = qol_by_code.get(code, {})
-        imd_obj = q.get("overall_imd") or {}
         
         row = {
             "council": r["name"],
@@ -443,8 +444,8 @@ def main():
             "tier": r["tier"],
             "control": ctrl.get("current"),
             "bucket": ctrl.get("bucket"),
-            "imd_national_rank": imd_obj.get("national_rank"),
             "life_expectancy": q.get("life_expectancy"),
+            "attainment8": q.get("attainment8"),
             "rent_affordability": q.get("rent_affordability"),
             "child_poverty_pct": q.get("child_poverty_pct"),
             "claimant_rate_pct": q.get("claimant_rate_pct"),
