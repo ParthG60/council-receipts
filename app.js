@@ -229,11 +229,12 @@ function renderCouncil(name) {
 
 function renderControlLine(c) {
   const line = el("control-line");
-  if (!c.control) { line.innerHTML = `Controlled by <strong>${c.party_full}</strong>`; return; }
+  const tierInfo = c.parent_county ? ` · District Council (part of ${c.parent_county})` : (c.la_class_label ? ` · ${c.la_class_label}` : "");
+  if (!c.control) { line.innerHTML = `Controlled by <strong>${c.party_full}</strong>${tierInfo}`; return; }
   const { current, since, previous, changed } = c.control;
   line.innerHTML = changed
-    ? `<strong>${current}</strong> · since ${since} · previously ${previous}`
-    : `<strong>${current}</strong> · since ${since}`;
+    ? `<strong>${current}</strong> · since ${since} · previously ${previous}${tierInfo}`
+    : `<strong>${current}</strong> · since ${since}${tierInfo}`;
 }
 
 function renderElectionBanner(c) {
@@ -432,7 +433,11 @@ function renderMoneyChart(c) {
 }
 
 function drawMoneyAbsolute(c) {
-  el("money-lede").textContent = "What your council puts into each service — £ per resident (staff + running costs).";
+  const tierCallout = (c.la_class === "SD" && c.parent_county)
+    ? `<div class="tier-callout">ℹ️ <strong>District Council Remit:</strong> As a lower-tier district council, ${c.name || "this council"} delivers Housing, Environment, Planning, and Leisure. Major statutory services (<strong>Education, Social Care, Public Health</strong>) are £0 here because they are funded & managed by <strong>${c.parent_county} County Council</strong>.</div>`
+    : "";
+
+  el("money-lede").innerHTML = `What your council puts into each service — £ per resident (staff + running costs).${tierCallout}`;
   const services = c.money.map((m) => m.service);
   const labels = services.map(shortService);
   const values = c.money.map((m) => m.gbp_per_resident);
@@ -469,7 +474,11 @@ function drawMoneyAbsolute(c) {
 }
 
 function drawMoneyShare(c) {
-  el("money-lede").textContent = "Share of matched-topic spend, this council vs the England average.";
+  const tierCallout = (c.la_class === "SD" && c.parent_county)
+    ? `<div class="tier-callout">ℹ️ <strong>District Council Remit:</strong> As a lower-tier district council, ${c.name || "this council"} delivers Housing, Environment, Planning, and Leisure. Major statutory services (<strong>Education, Social Care, Public Health</strong>) are funded & managed by <strong>${c.parent_county} County Council</strong>.</div>`
+    : "";
+
+  el("money-lede").innerHTML = `Share of matched-topic spend, this council vs the England average.${tierCallout}`;
   const rows = c.money_share;
   const topics = rows.map((r) => r.topic);
   const councilVals = rows.map((r) => r.council_pct);
@@ -964,7 +973,7 @@ function initFeedbackForm() {
 window.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initFeedbackForm();
-  fetch("data.json?v=20260824g")
+  fetch("data.json?v=20260824h")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;

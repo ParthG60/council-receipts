@@ -263,6 +263,21 @@ def main():
     pop_df = read_csv_optional(ENG_DIR / "population_all.csv")
     population = dict(zip(pop_df["ons_code"], pop_df["population"])) if pop_df is not None else {}
 
+    # Shire District -> Parent County & Authority Class lookup
+    lad2cty_df = read_csv_optional(ENG_DIR / "lad_to_county_2023.csv")
+    parent_county_map = dict(zip(lad2cty_df["LAD23CD"], lad2cty_df["CTY23NM"])) if lad2cty_df is not None else {}
+    parent_county_code_map = dict(zip(lad2cty_df["LAD23CD"], lad2cty_df["CTY23CD"])) if lad2cty_df is not None else {}
+    
+    fin_df = read_csv_optional(ENG_DIR / "finance_all.csv")
+    la_class_raw = dict(zip(fin_df["ons_code"], fin_df["class"])) if fin_df is not None else {}
+    CLASS_LABELS = {
+        "SD": "Shire District (Lower Tier)",
+        "SC": "County Council (Upper Tier)",
+        "UA": "Unitary Authority (Single Tier)",
+        "MD": "Metropolitan Borough (Single Tier)",
+        "LB": "London Borough (Single Tier)",
+    }
+
     # ethnicity/age%: profile_all (267, by ons) + data/profile.csv (15 + England, by name)
     profile_all = read_csv_optional(ENG_DIR / "profile_all.csv")
     profile_old = read_csv_optional(DATA_DIR / "profile.csv")
@@ -490,8 +505,13 @@ def main():
             rl = reading_links[reading_links["council"] == cname].head(3)
             links = rl[["title", "url", "source"]].to_dict("records")
 
+        raw_class = la_class_raw.get(code, "UA" if r["tier"] == "lower" and code not in parent_county_map else "SD")
         out_councils[cname] = {
             "id": r["council_id"], "ons_code": code, "tier": r["tier"],
+            "la_class": raw_class,
+            "la_class_label": CLASS_LABELS.get(raw_class, "Local Authority"),
+            "parent_county": parent_county_map.get(code),
+            "parent_county_code": parent_county_code_map.get(code),
             "party": ctrl["bucket"] if ctrl else None,
             "party_full": ctrl["current"] if ctrl else None,
             "control": ctrl,
