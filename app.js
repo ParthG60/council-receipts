@@ -991,7 +991,7 @@ function initFeedbackForm() {
 window.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initFeedbackForm();
-  fetch("data.json?v=20260824k")
+  fetch("data.json?v=20260824l")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
