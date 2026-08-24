@@ -323,6 +323,7 @@ def main():
                     "rank": int(qr["imd_rank"]) if pd.notna(qr["imd_rank"]) else None,
                     "pool_n": int(qr["imd_pool_n"]) if pd.notna(qr["imd_pool_n"]) else None,
                     "tier": qr["imd_tier"],
+                    "national_rank": int(qr["imd_national_rank"]) if pd.notna(qr["imd_national_rank"]) else None,
                 } if pd.notna(qr["imd_score"]) else None
             }
 
@@ -419,23 +420,39 @@ def main():
     party_groups_spend = party_groups(ft_shares, bucket_of, "spend_share")
     party_groups_discussion = party_groups(disc_share_by_name, bucket_of, "discussion_share")
 
-    # ---- league table (all councils, IMD domains) -----------------------------
+    # ---- league table (all councils, QoL + IMD indicators) -------------------
+    QOL_INDICATORS = [
+        {"id": "imd_national_rank", "label": "Deprivation Rank", "unit": "/282", "lower_better": True},
+        {"id": "life_expectancy", "label": "Life Expectancy", "unit": "yrs", "lower_better": False},
+        {"id": "rent_affordability", "label": "Rent Affordability", "unit": "%", "lower_better": True},
+        {"id": "child_poverty_pct", "label": "Child Poverty", "unit": "%", "lower_better": True},
+        {"id": "claimant_rate_pct", "label": "Claimant Rate", "unit": "%", "lower_better": True},
+        {"id": "air_quality_pm25_pct", "label": "Air Quality (PM2.5)", "unit": "%", "lower_better": True},
+        {"id": "crime_per_1000", "label": "Crime / 1k", "unit": "", "lower_better": True},
+    ]
+
     league_rows = []
     for code, r in reg.items():
-        sc = scorecard.get(code)
-        if not sc:
-            continue
         ctrl = control.get(code, {})
-        row = {"council": r["name"], "ons_code": code, "tier": r["tier"],
-               "control": ctrl.get("current"), "bucket": ctrl.get("bucket")}
-        for d in sc:
-            dom = d["domain"]
-            row[f"{dom}_score"] = d["score"]
-            row[f"{dom}_decile"] = d["decile"]
-            row[f"{dom}_rank"] = d["rank"]
-            row[f"{dom}_pool"] = d["pool_n"]
+        q = qol_by_code.get(code, {})
+        imd_obj = q.get("overall_imd") or {}
+        
+        row = {
+            "council": r["name"],
+            "ons_code": code,
+            "tier": r["tier"],
+            "control": ctrl.get("current"),
+            "bucket": ctrl.get("bucket"),
+            "imd_national_rank": imd_obj.get("national_rank"),
+            "life_expectancy": q.get("life_expectancy"),
+            "rent_affordability": q.get("rent_affordability"),
+            "child_poverty_pct": q.get("child_poverty_pct"),
+            "claimant_rate_pct": q.get("claimant_rate_pct"),
+            "air_quality_pm25_pct": q.get("air_quality_pm25_pct"),
+            "crime_per_1000": q.get("crime_per_1000"),
+        }
         league_rows.append(row)
-    league_table = {"domains": DOMAINS, "domain_labels": DOMAIN_LABELS, "rows": league_rows}
+    league_table = {"indicators": QOL_INDICATORS, "rows": league_rows}
 
     # ---- assemble councils ----------------------------------------------------
     out_councils = {}

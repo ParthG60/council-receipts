@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260824b">
+<link rel="stylesheet" href="style.css?v=20260824c">
 </head>
 <body>
 <div class="container">
@@ -27,72 +27,84 @@
   <section id="tab-council" class="tab-panel active">
 
     <div class="council-picker">
-      <input type="text" id="council-input" list="council-list" aria-label="Search for a council" placeholder="Search a council…" autocomplete="off">
-      <datalist id="council-list"></datalist>
+      <div class="picker-inputs">
+        <input type="text" id="council-input" list="council-list" aria-label="Search for a council" placeholder="Type to search council (e.g. Manchester, Camden)…" autocomplete="off">
+        <datalist id="council-list"></datalist>
+        <select id="council-select" aria-label="Or select a council from the dropdown list">
+          <option value="">— Or select a council from the list (282) —</option>
+        </select>
+      </div>
+      <div id="council-prompt" class="council-prompt">
+        <p class="prompt-icon">🏛️</p>
+        <p class="prompt-title">Search or choose your council above</p>
+        <p class="prompt-sub">Explore what your councillors discuss, where public funds go, and how your council ranks across England on deprivation, quality of life, and financial distress.</p>
+      </div>
       <div id="election-banner"></div>
       <div id="control-line" class="control-line"></div>
     </div>
 
-    <div class="grid-2">
-      <section class="panel" id="panel-population">
-        <h2>Population</h2>
-        <div class="big-number" id="population-headline"></div>
-        <p class="caption">Source: ONS mid-2024 population estimates.</p>
-        <div class="key-line" id="race-key"></div>
-        <div id="race-chart"></div>
-        <p class="caption">Ethnicity, Census 2021 (ONS).</p>
+    <div id="council-data-panels" class="council-data-panels" style="display:none;">
+      <div class="grid-2">
+        <section class="panel" id="panel-population">
+          <h2>Population</h2>
+          <div class="big-number" id="population-headline"></div>
+          <p class="caption">Source: ONS mid-2024 population estimates.</p>
+          <div class="key-line" id="race-key"></div>
+          <div id="race-chart"></div>
+          <p class="caption">Ethnicity, Census 2021 (ONS).</p>
+        </section>
+
+        <section class="panel" id="panel-age">
+          <h2 id="age-heading">Age profile vs England</h2>
+          <div class="key-line" id="age-key"></div>
+          <div id="age-chart"></div>
+          <p class="caption">Source: ONS mid-2024 population estimates.</p>
+        </section>
+      </div>
+
+      <section class="panel" id="panel-topics">
+        <h2>What they talk about</h2>
+        <div class="key-line" id="topics-key"></div>
+        <div id="topics-chart"></div>
+        <p class="caption">Source: Council Gateway API meeting minutes, FY2024-25 (Oct 2024–Mar 2025, matched to the spend year below). Share of all topic keyword hits.</p>
       </section>
 
-      <section class="panel" id="panel-age">
-        <h2 id="age-heading">Age profile vs England</h2>
-        <div class="key-line" id="age-key"></div>
-        <div id="age-chart"></div>
-        <p class="caption">Source: ONS mid-2024 population estimates.</p>
+      <section class="panel" id="panel-money">
+        <h2>Where the budget goes</h2>
+        <p class="lede" id="money-lede">£ per resident going into each service (staff plus running costs).</p>
+        <div class="toggle-group" id="money-toggle">
+          <button class="toggle-btn active" data-view="absolute">£ per resident</button>
+          <button class="toggle-btn" data-view="share">% share</button>
+        </div>
+        <div class="key-line" id="money-key"></div>
+        <div id="money-chart"></div>
+        <p class="caption" id="money-caption">Source: MHCLG Revenue Outturn 2024-25. Includes activity funded by fees and charges, not just council tax.</p>
+      </section>
+
+      <section class="panel" id="panel-tvs">
+        <h2>Do they talk about what they spend on?</h2>
+        <div class="key-line" id="tvs-key"></div>
+        <div id="tvs-chart"></div>
+        <p class="caption" id="tvs-caption"></p>
+      </section>
+
+      <section class="panel" id="panel-distress">
+        <h2>Financial health & distress check</h2>
+        <div id="distress-status-box"></div>
+        <p class="caption" id="distress-caption">Source: MHCLG Section 114 statutory notices & Exceptional Financial Support (EFS) capitalisation records (2024–2026).</p>
+      </section>
+
+      <section class="panel" id="panel-qol">
+        <h2>Quality of life & deprivation</h2>
+        <div id="qol-grid" class="qol-grid"></div>
+        <p class="caption">Sources: ONS Health State Life Expectancies (2025) · ONS Private Rent Affordability (PIPR/ASHE) · Defra/OHID PM2.5 Mortality Fraction · DWP Children in Low Income Families · Nomis Claimant Count (July 2026) · ONS CSP Crime · MHCLG IoD2025.</p>
+      </section>
+
+      <section class="panel" id="panel-links">
+        <h2>Read up on it</h2>
+        <ul id="reading-links"></ul>
       </section>
     </div>
-
-    <section class="panel" id="panel-topics">
-      <h2>What they talk about</h2>
-      <div class="key-line" id="topics-key"></div>
-      <div id="topics-chart"></div>
-      <p class="caption">Source: Council Gateway API meeting minutes, FY2024-25 (Oct 2024–Mar 2025, matched to the spend year below). Share of all topic keyword hits.</p>
-    </section>
-
-    <section class="panel" id="panel-money">
-      <h2>Where the budget goes</h2>
-      <p class="lede" id="money-lede">£ per resident going into each service (staff plus running costs).</p>
-      <div class="toggle-group" id="money-toggle">
-        <button class="toggle-btn active" data-view="absolute">£ per resident</button>
-        <button class="toggle-btn" data-view="share">% share</button>
-      </div>
-      <div class="key-line" id="money-key"></div>
-      <div id="money-chart"></div>
-      <p class="caption" id="money-caption">Source: MHCLG Revenue Outturn 2024-25. Includes activity funded by fees and charges, not just council tax.</p>
-    </section>
-
-    <section class="panel" id="panel-tvs">
-      <h2>Do they talk about what they spend on?</h2>
-      <div class="key-line" id="tvs-key"></div>
-      <div id="tvs-chart"></div>
-      <p class="caption" id="tvs-caption"></p>
-    </section>
-
-    <section class="panel" id="panel-distress">
-      <h2>Financial health & distress check</h2>
-      <div id="distress-status-box"></div>
-      <p class="caption" id="distress-caption">Source: MHCLG Section 114 statutory notices & Exceptional Financial Support (EFS) capitalisation records (2024–2026).</p>
-    </section>
-
-    <section class="panel" id="panel-qol">
-      <h2>Quality of life & deprivation</h2>
-      <div id="qol-grid" class="qol-grid"></div>
-      <p class="caption">Sources: ONS Health State Life Expectancies (2025) · ONS Private Rent Affordability (PIPR/ASHE) · Defra/OHID PM2.5 Mortality Fraction · DWP Children in Low Income Families · Nomis Claimant Count (July 2026) · ONS CSP Crime · MHCLG IoD2025.</p>
-    </section>
-
-    <section class="panel" id="panel-links">
-      <h2>Read up on it</h2>
-      <ul id="reading-links"></ul>
-    </section>
 
     <details class="panel" id="panel-methodology">
       <summary>Methodology</summary>
@@ -134,12 +146,18 @@
     </section>
 
     <section class="panel panel-wide" id="panel-league">
-      <h2>League table</h2>
-      <p class="caption">Click a column header to sort.</p>
-      <div class="toggle-group" id="league-toggle">
-        <button class="toggle-btn active" data-n="10">Top 10</button>
-        <button class="toggle-btn" data-n="25">Top 25</button>
-        <button class="toggle-btn" data-n="50">Top 50</button>
+      <h2>National Quality of Life & Deprivation League Table</h2>
+      <p class="caption">Click any column header to sort. Deprivation rank: 1 = most deprived in England.</p>
+      <div class="league-controls">
+        <div class="toggle-group" id="league-toggle">
+          <button class="toggle-btn active" data-n="10">Top 10</button>
+          <button class="toggle-btn" data-n="25">Top 25</button>
+          <button class="toggle-btn" data-n="50">Top 50</button>
+          <button class="toggle-btn" data-n="all">All 282</button>
+        </div>
+        <div class="league-search-wrap">
+          <input type="text" id="league-search" placeholder="Search council by name…" aria-label="Search council in league table" autocomplete="off">
+        </div>
       </div>
       <div id="league-table-wrap"></div>
       <p class="caption" id="league-caption"></p>
@@ -197,6 +215,6 @@
 </div>
 
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" defer></script>
-<script src="app.js?v=20260824b" defer></script>
+<script src="app.js?v=20260824c" defer></script>
 </body>
 </html>

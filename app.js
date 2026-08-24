@@ -108,22 +108,61 @@ function initTabs() {
 // ------------------------------------------------------- council view ---
 function initCouncilSelect() {
   const input = el("council-input");
+  const select = el("council-select");
   const list = el("council-list");
   const names = Object.keys(DATA.councils).sort();
+
   list.innerHTML = names.map((n) => `<option value="${n}"></option>`).join("");
+  
+  if (select) {
+    select.innerHTML = `<option value="">— Or select a council from list (${names.length}) —</option>` +
+      names.map((n) => `<option value="${n}">${n}</option>`).join("");
+    select.addEventListener("change", () => {
+      if (select.value && DATA.councils[select.value]) {
+        input.value = select.value;
+        renderCouncil(select.value);
+      }
+    });
+  }
 
   input.addEventListener("input", () => {
-    if (DATA.councils[input.value]) renderCouncil(input.value);
+    if (DATA.councils[input.value]) {
+      if (select) select.value = input.value;
+      renderCouncil(input.value);
+    }
   });
 
   const deepLink = new URLSearchParams(location.search).get("council");
-  const start = deepLink && DATA.councils[deepLink] ? deepLink : names[0];
-  input.value = start;
-  renderCouncil(start);
+  if (deepLink && DATA.councils[deepLink]) {
+    input.value = deepLink;
+    if (select) select.value = deepLink;
+    renderCouncil(deepLink);
+  } else {
+    // Start blank without pre-selecting a council
+    input.value = "";
+    if (select) select.value = "";
+    const panels = el("council-data-panels");
+    if (panels) panels.style.display = "none";
+    const prompt = el("council-prompt");
+    if (prompt) prompt.style.display = "";
+    el("control-line").innerHTML = "";
+    el("election-banner").innerHTML = "";
+  }
 }
 
 function renderCouncil(name) {
+  if (!name || !DATA.councils[name]) return;
   const c = DATA.councils[name];
+
+  const panels = el("council-data-panels");
+  if (panels) panels.style.display = "";
+  const prompt = el("council-prompt");
+  if (prompt) prompt.style.display = "none";
+
+  const input = el("council-input");
+  if (input && input.value !== name) input.value = name;
+  const select = el("council-select");
+  if (select && select.value !== name) select.value = name;
 
   renderControlLine(c);
   renderElectionBanner(c);
@@ -516,14 +555,17 @@ function renderQoL(c) {
     const imd = q.overall_imd;
     const bg = decileColor(imd.decile);
     const fg = textOnColor(bg);
-    const decileTxt = imd.decile != null ? `Decile ${imd.decile} of 10` : "—";
-    const ordTxt = imd.decile != null ? `${ordinal(imd.decile)} most-deprived tenth` : "";
-    const rankTxt = imd.rank != null ? `Rank ${imd.rank} of ${imd.pool_n} ${tierLabel}` : "";
+    const natRankTxt = imd.national_rank != null ? `Rank #${imd.national_rank} in England` : (imd.rank != null ? `Rank #${imd.rank} in pool` : "—");
+    const decileTxt = imd.decile != null ? `Decile ${imd.decile} of 10 (${ordinal(imd.decile)} most-deprived tenth)` : "";
     imdHtml = `
       <div class="qol-card imd-card" style="border-left: 5px solid ${bg};">
-        <div class="qol-label">Overall Deprivation (IoD2025)</div>
-        <div class="qol-value" style="color:${bg === '#f7f7f7' ? 'var(--ink)' : bg}; font-weight:700;">${decileTxt}</div>
-        <div class="qol-sub">${ordTxt} · ${rankTxt}</div>
+        <div class="qol-header">
+          <span class="qol-label">Overall Deprivation (IoD2025)</span>
+          <span class="qol-tag" style="background:${bg};color:${fg};font-weight:700;">Decile ${imd.decile ?? "—"}</span>
+        </div>
+        <div class="qol-value" style="color:${bg === '#f7f7f7' ? 'var(--ink)' : bg}; font-weight:700;">${natRankTxt}</div>
+        <div class="qol-benchmark">${decileTxt}</div>
+        <div class="qol-sub">Official MHCLG Indices of Deprivation 2025 combining 55 indicators across 7 domains (income, jobs, health, education, crime, housing, environment). 1 = most deprived.</div>
       </div>`;
   }
 
@@ -533,7 +575,7 @@ function renderQoL(c) {
       label: "Life Expectancy",
       val: q.life_expectancy != null ? `${q.life_expectancy} yrs` : "—",
       eng: eng.life_expectancy != null ? `${eng.life_expectancy} yrs` : "81.9 yrs",
-      note: "Period life expectancy at birth (ONS 2025)",
+      note: "Period life expectancy at birth across sexes (ONS 2025).",
       higherGood: true,
       valNum: q.life_expectancy,
       engNum: eng.life_expectancy || 81.9,
@@ -542,7 +584,7 @@ function renderQoL(c) {
       label: "Rent Affordability",
       val: q.rent_affordability != null ? `${q.rent_affordability}%` : "—",
       eng: eng.rent_affordability != null ? `${eng.rent_affordability}%` : "31.0%",
-      note: "Median rent as % of gross FT earnings (ONS)",
+      note: "Median private rent as a % of median gross full-time earnings (ONS PIPR/ASHE).",
       higherGood: false,
       valNum: q.rent_affordability,
       engNum: eng.rent_affordability || 31.0,
@@ -551,7 +593,7 @@ function renderQoL(c) {
       label: "Air Quality (PM2.5)",
       val: q.air_quality_pm25_pct != null ? `${q.air_quality_pm25_pct}%` : "—",
       eng: eng.air_quality_pm25_pct != null ? `${eng.air_quality_pm25_pct}%` : "5.3%",
-      note: "Mortality attributable to PM2.5 pollution (Defra)",
+      note: "Estimated % of adult all-cause mortality attributable to human-made fine particulate air pollution PM2.5 (Defra/OHID).",
       higherGood: false,
       valNum: q.air_quality_pm25_pct,
       engNum: eng.air_quality_pm25_pct || 5.3,
@@ -560,16 +602,16 @@ function renderQoL(c) {
       label: "Child Poverty",
       val: q.child_poverty_pct != null ? `${q.child_poverty_pct}%` : "—",
       eng: eng.child_poverty_pct != null ? `${eng.child_poverty_pct}%` : "19.8%",
-      note: "Children in low income families (DWP)",
+      note: "Share of children aged under 16 living in families in relative low income (DWP).",
       higherGood: false,
       valNum: q.child_poverty_pct,
       engNum: eng.child_poverty_pct || 19.8,
     },
     {
-      label: "Claimant / Unemployment",
+      label: "Claimant Rate",
       val: q.claimant_rate_pct != null ? `${q.claimant_rate_pct}%` : "—",
       eng: eng.claimant_rate_pct != null ? `${eng.claimant_rate_pct}%` : "4.0%",
-      note: "Claimants % of 16-64 population (Nomis 2026)",
+      note: "Universal Credit / JSA claimants as a % of resident population aged 16-64 (Nomis July 2026).",
       higherGood: false,
       valNum: q.claimant_rate_pct,
       engNum: eng.claimant_rate_pct || 4.0,
@@ -578,7 +620,7 @@ function renderQoL(c) {
       label: "Crime Rate",
       val: q.crime_per_1000 != null ? `${q.crime_per_1000}` : "—",
       eng: eng.crime_per_1000 != null ? `${eng.crime_per_1000}` : "89.5",
-      note: "Recorded offences per 1,000 pop (ONS)",
+      note: "Total recorded offences (excluding fraud) per 1,000 residents (ONS CSP 2024).",
       higherGood: false,
       valNum: q.crime_per_1000,
       engNum: eng.crime_per_1000 || 89.5,
@@ -713,35 +755,56 @@ function renderPartyChart(chartId, keyId, groups, shareKey) {
 
 let leagueSort = null;
 let leagueTopN = 10;
+let leagueSearchQuery = "";
 
 function renderLeagueTable() {
   const lt = DATA.league_table;
-  const hasData = lt && lt.domains && lt.domains.length;
+  const hasData = lt && lt.rows && lt.rows.length;
   if (!hasData) {
-    el("league-table-wrap").innerHTML = `<p class="empty-note">Scorecard data not available yet.</p>`;
+    el("league-table-wrap").innerHTML = `<p class="empty-note">League table data not available yet.</p>`;
     el("league-caption").textContent = "";
     showPanel("league-toggle", false);
     return;
   }
-  if (!leagueSort) leagueSort = { col: "IMD_score", asc: false };
+  if (!leagueSort) leagueSort = { col: "imd_national_rank", asc: true };
   el("league-caption").textContent =
-    "Sorted most-deprived first by default. Decile colour: magenta = more deprived, green = less. Ranks and deciles are within tier — county councils out of 153, districts/unitaries out of 296 — so don't compare deciles across tiers.";
+    "Sorted by Overall Deprivation Rank in England (1 = most deprived) by default. Click any column header to sort by that indicator. Use search box to quickly find your council.";
 
-  const toggle = el("league-toggle");
-  toggle.querySelectorAll(".toggle-btn").forEach((btn) => {
-    btn.classList.toggle("active", Number(btn.dataset.n) === leagueTopN);
-    btn.onclick = () => {
-      leagueTopN = Number(btn.dataset.n);
+  // Wire search input
+  const searchInput = el("league-search");
+  if (searchInput && !searchInput.dataset.wired) {
+    searchInput.dataset.wired = "1";
+    searchInput.addEventListener("input", (e) => {
+      leagueSearchQuery = (e.target.value || "").trim().toLowerCase();
       drawLeagueTable(lt);
-    };
-  });
+    });
+  }
+
+  // Wire Top N toggle buttons
+  const toggle = el("league-toggle");
+  if (toggle) {
+    toggle.querySelectorAll(".toggle-btn").forEach((btn) => {
+      btn.onclick = () => {
+        toggle.querySelectorAll(".toggle-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        const val = btn.dataset.n;
+        leagueTopN = val === "all" ? "all" : Number(val);
+        drawLeagueTable(lt);
+      };
+    });
+  }
 
   drawLeagueTable(lt);
 }
 
 function sortedLeagueRows(lt) {
   const { col, asc } = leagueSort;
-  const rows = lt.rows.slice();
+  let rows = lt.rows.slice();
+
+  if (leagueSearchQuery) {
+    rows = rows.filter((r) => (r.council || "").toLowerCase().includes(leagueSearchQuery));
+  }
+
   rows.sort((a, b) => {
     let av = a[col], bv = b[col];
     if (av == null && bv == null) return 0;
@@ -755,44 +818,70 @@ function sortedLeagueRows(lt) {
 
 function drawLeagueTable(lt) {
   const cols = [
-    { key: "council", label: "Council" },
-    { key: "control", label: "Control" },
-    ...lt.domains.map((d) => ({ key: d, label: lt.domain_labels[d] || d })),
+    { key: "council", label: "Council", unit: "" },
+    { key: "control", label: "Control", unit: "" },
+    { key: "imd_national_rank", label: "Deprivation Rank", unit: "/282" },
+    { key: "life_expectancy", label: "Life Exp.", unit: " yrs" },
+    { key: "rent_affordability", label: "Rent Afford.", unit: "%" },
+    { key: "child_poverty_pct", label: "Child Poverty", unit: "%" },
+    { key: "claimant_rate_pct", label: "Claimant %", unit: "%" },
+    { key: "air_quality_pm25_pct", label: "Air Quality", unit: "%" },
+    { key: "crime_per_1000", label: "Crime / 1k", unit: "" },
   ];
-  const rows = sortedLeagueRows(lt).slice(0, leagueTopN);
+
+  const allSorted = sortedLeagueRows(lt);
+  const rows = leagueTopN === "all" ? allSorted : allSorted.slice(0, leagueTopN);
+
   const rowsHtml = rows
     .map((r, i) => {
       const cells = cols.map((col) => {
-        if (col.key === "council" || col.key === "control") return `<td>${r[col.key] ?? "—"}</td>`;
-        const decile = r[col.key + "_decile"];
-        if (decile == null) return `<td>—</td>`;
-        const bg = decileColor(decile);
-        const fg = textOnColor(bg);
-        return `<td><span class="decile-chip" style="background:${bg};color:${fg}">${decile}</span></td>`;
+        const val = r[col.key];
+        if (col.key === "council") {
+          return `<td><a href="?council=${encodeURIComponent(val)}" class="council-link">${val}</a></td>`;
+        }
+        if (col.key === "control") {
+          return `<td>${val ?? "—"}</td>`;
+        }
+        if (val == null) return `<td>—</td>`;
+        
+        if (col.key === "imd_national_rank") {
+          const decile = Math.min(10, Math.max(1, Math.ceil(val / 28.2)));
+          const bg = decileColor(decile);
+          const fg = textOnColor(bg);
+          return `<td><span class="decile-chip" style="background:${bg};color:${fg}">#${val}</span></td>`;
+        }
+        return `<td>${val}${col.unit}</td>`;
       });
       return `<tr><td class="rank-cell">${i + 1}</td>${cells.join("")}</tr>`;
     })
     .join("");
+
   const headHtml =
     `<th class="rank-cell">#</th>` +
     cols
       .map((col) => {
-        const sortKey = col.key === "council" || col.key === "control" ? col.key : col.key + "_score";
-        const active = leagueSort.col === sortKey;
+        const active = leagueSort.col === col.key;
         const arrow = active ? (leagueSort.asc ? " ▲" : " ▼") : "";
-        return `<th data-col="${sortKey}" class="sortable${active ? " sorted" : ""}">${col.label}${arrow}</th>`;
+        return `<th data-col="${col.key}" class="sortable${active ? " sorted" : ""}">${col.label}${arrow}</th>`;
       })
       .join("");
+
+  const emptyMsg = rows.length === 0 ? `<tr><td colspan="${cols.length + 1}" class="empty-note" style="text-align:center;padding:16px;">No councils matching "${leagueSearchQuery}"</td></tr>` : "";
+
   el("league-table-wrap").innerHTML = `<div style="overflow-x:auto"><table class="league">
     <thead><tr>${headHtml}</tr></thead>
-    <tbody>${rowsHtml}</tbody>
+    <tbody>${rowsHtml || emptyMsg}</tbody>
   </table></div>`;
 
   document.querySelectorAll("table.league th.sortable").forEach((th) => {
     th.addEventListener("click", () => {
       const col = th.dataset.col;
-      if (leagueSort.col === col) leagueSort.asc = !leagueSort.asc;
-      else leagueSort = { col, asc: col !== "IMD_score" && !col.endsWith("_score") };
+      if (leagueSort.col === col) {
+        leagueSort.asc = !leagueSort.asc;
+      } else {
+        // default direction: rank ascending, life expectancy descending, rates ascending
+        leagueSort = { col, asc: col === "imd_national_rank" || col === "council" || col === "control" };
+      }
       drawLeagueTable(lt);
     });
   });
@@ -801,7 +890,7 @@ function drawLeagueTable(lt) {
 // -------------------------------------------------------------- init ---
 window.addEventListener("DOMContentLoaded", () => {
   initTabs();
-  fetch("data.json?v=20260824b")
+  fetch("data.json?v=20260824c")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
