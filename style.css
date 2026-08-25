@@ -587,6 +587,21 @@ table.league .rank-cell { color: var(--faint); width: 1.6em; padding-right: 2px;
 table.league th.sortable { cursor: pointer; user-select: none; }
 table.league th.sortable:hover { color: var(--ink); }
 table.league th.sorted { color: var(--stamp); }
+table.league th.num-th, table.league td.num-cell { text-align: right; font-variant-numeric: tabular-nums; }
+table.league td.control-cell {
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+table.league td.council-cell {
+  max-width: 175px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
 
 .decile-chip {

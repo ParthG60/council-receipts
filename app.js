@@ -881,13 +881,18 @@ function renderLeagueTable() {
   drawLeagueTable(lt);
 }
 
+function shortenControl(s) {
+  if (!s) return "—";
+  return s
+    .replace(/No overall control/g, "NOC")
+    .replace(/Liberal Democrat/g, "LibDem")
+    .replace(/\(elected mayor\)/g, "(Mayor)")
+    .replace(/\s*\/\s*/g, "/");
+}
+
 function sortedLeagueRows(lt) {
   const { col, asc } = leagueSort;
   let rows = lt.rows.slice();
-
-  if (leagueSearchQuery) {
-    rows = rows.filter((r) => (r.council || "").toLowerCase().includes(leagueSearchQuery));
-  }
 
   rows.sort((a, b) => {
     let av = a[col], bv = b[col];
@@ -931,13 +936,14 @@ function drawLeagueTable(lt) {
       const cells = cols.map((col) => {
         const val = r[col.key];
         if (col.key === "council") {
-          return `<td><a href="?council=${encodeURIComponent(val)}" class="council-link">${val}</a></td>`;
+          return `<td class="council-cell"><a href="?council=${encodeURIComponent(val)}" class="council-link" title="${val}">${val}</a></td>`;
         }
         if (col.key === "control") {
-          return `<td>${val ?? "—"}</td>`;
+          const short = shortenControl(val);
+          return `<td class="control-cell" title="${val ?? ''}">${short}</td>`;
         }
-        if (val == null) return `<td>—</td>`;
-        return `<td>${val}${col.unit}</td>`;
+        if (val == null) return `<td class="num-cell">—</td>`;
+        return `<td class="num-cell">${val}${col.unit}</td>`;
       });
       return `<tr><td class="rank-cell">#${r._globalRank}</td>${cells.join("")}</tr>`;
     })
@@ -949,7 +955,8 @@ function drawLeagueTable(lt) {
       .map((col) => {
         const active = leagueSort.col === col.key;
         const arrow = active ? (leagueSort.asc ? " ▲" : " ▼") : "";
-        return `<th data-col="${col.key}" class="sortable${active ? " sorted" : ""}">${col.label}${arrow}</th>`;
+        const isNum = col.key !== "council" && col.key !== "control";
+        return `<th data-col="${col.key}" class="sortable${active ? " sorted" : ""}${isNum ? " num-th" : ""}">${col.label}${arrow}</th>`;
       })
       .join("");
 
@@ -1042,7 +1049,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20260825b")
+  fetch("data.json?v=20260825c")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
