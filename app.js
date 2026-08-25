@@ -6,19 +6,25 @@ const ACCENT_2 = "#8c877a";
 const GREY = "#b6ad9c";
 const SPEND_COLOR = "#b5372b";
 
-const PLOTLY_CONFIG = { displayModeBar: false, responsive: true };
+const PLOTLY_CONFIG = {
+  displayModeBar: false,
+  responsive: true,
+  staticPlot: true,
+};
 
 /* Every chart inherits receipt typography + transparent paper without touching
    each call site: wrap newPlot once and merge a base layout in. */
 const BASE_FONT = { family: "'IBM Plex Mono', ui-monospace, monospace", size: 12, color: "#262420" };
 const RAW_NEWPLOT = Plotly.newPlot.bind(Plotly);
-Plotly.newPlot = (id, traces, layout = {}, config) =>
+Plotly.newPlot = (id, traces, layout = {}, config = PLOTLY_CONFIG) =>
   RAW_NEWPLOT(id, traces, {
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
     ...layout,
+    xaxis: { fixedrange: true, ...(layout.xaxis || {}) },
+    yaxis: { fixedrange: true, automargin: false, ...(layout.yaxis || {}) },
     font: { ...BASE_FONT, ...(layout.font || {}) },
-  }, config);
+  }, { ...PLOTLY_CONFIG, ...(config || {}) });
 
 /* RSX service names are too long for a chart margin — short display labels,
    two lines where still long. Keyed by the exact RSX name in data.json. */
@@ -1049,7 +1055,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20260825c")
+  fetch("data.json?v=20260825d")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;

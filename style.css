@@ -1071,6 +1071,11 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
     font-size: 0.68rem;
   }
   
+  .js-plotly-plot {
+    pointer-events: none;
+    touch-action: pan-y;
+  }
+  
   .feedback-form {
     padding: 14px 12px;
   }
