@@ -559,15 +559,6 @@ function renderTalkVsSpend(c) {
     PLOTLY_CONFIG
   );
 }
-      margin: { l: 168, r: 45, t: 10, b: 30 },
-      height: chartHeight(topics.length, 40),
-      xaxis: { title: "", ticksuffix: "%", zeroline: false, range: headroomRange([...spend, ...discussion]) },
-      yaxis: { title: "" },
-      template: "simple_white",
-    },
-    PLOTLY_CONFIG
-  );
-}
 
 function ordinal(n) {
   const s = ["th", "st", "nd", "rd"], v = n % 100;
@@ -1051,7 +1042,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20260825a")
+  fetch("data.json?v=20260825b")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
