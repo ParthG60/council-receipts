@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260824l">
+<link rel="stylesheet" href="style.css?v=20260825a">
 </head>
 <body>
 <div class="container">
@@ -19,6 +19,7 @@
     <nav class="tabs">
       <button class="tab active" data-tab="council">Your council</button>
       <button class="tab" data-tab="national">National</button>
+      <button class="tab" data-tab="league">League table</button>
       <button class="tab" data-tab="feedback">Feedback</button>
     </nav>
   </header>
@@ -35,7 +36,7 @@
       <div id="council-prompt" class="council-prompt">
         <p class="prompt-icon">🏛️</p>
         <p class="prompt-title">Search or select your council above</p>
-        <p class="prompt-sub">Explore what your councillors discuss, where public funds go, and how your council ranks across England on deprivation, quality of life, and financial distress.</p>
+        <p class="prompt-sub">Explore what your councillors discuss, where public funds go, and how your council ranks across England on quality of life, public services, and financial health.</p>
       </div>
       <div id="election-banner"></div>
       <div id="control-line" class="control-line"></div>
@@ -107,13 +108,25 @@
     <details class="panel" id="panel-methodology">
       <summary>Methodology</summary>
       <div id="methodology-text">
-        <p><strong>What it is.</strong> Every English council in the Council Gateway (282), across the political spectrum. Pick one to see what it talks about, where its money goes, and how it compares.</p>
-        <p><strong>What they talk about.</strong> Meeting minutes come from the Council Gateway API (Poteris), covering October 2024 – March 2025, matched to the 2024-25 financial year so discussion and spend cover the same period. Each document is classified by keyword counting against a fixed taxonomy. A council's discussion share for a topic = that topic's keyword hits ÷ all topic hits across its minutes. Statutory notices (licensing, road closures) are filtered out.</p>
+        <p><strong>What it is.</strong> Covers all 282 English local authorities in the Council Gateway across the political spectrum. Pick any council to explore what it talks about, where its money goes, and how it compares on key outcome metrics.</p>
+        <p><strong>What they talk about.</strong> Meeting minutes come from the Council Gateway API (Poteris), covering October 2024 – March 2025, matched to the 2024-25 financial year so discussion and spend cover the same period. Each document is classified by keyword counting against a fixed 10-topic taxonomy. A council's discussion share for a topic = that topic's keyword hits ÷ all topic hits across its minutes. Statutory notices (licensing orders, road closures, traffic regulation orders) are filtered out.</p>
         <p><strong>Where the money goes.</strong> Spend is from the MHCLG Revenue Outturn 2024-25, gross expenditure by service (staff + running costs), converted to £ per resident. Gross measures the resources a council actually pours into each service. The alternative, net expenditure (gross minus fees-and-charges income), measures the burden on council tax instead, and understates services that charge heavily: on a net basis Camden's £37m-a-year roads operation would show up as negative, because parking income (£57m) more than covers it. One caveat with gross: it includes activity funded by fees and charges as well as council tax. Bath's Roman Baths spend, for instance, is more than covered by admissions.</p>
+        <p><strong>Spend benchmarks.</strong> England spend figures are calculated as population-weighted England averages across all 282 local authorities (total English spend divided by total population for £/resident, and total topic spend divided by total expenditure for budget shares).</p>
         <h3>Taxonomy</h3>
         <table id="taxonomy-table" class="taxonomy"></table>
-        <p><strong>Scorecard.</strong> The English Indices of Deprivation 2025 (IoD2025, MHCLG): overall deprivation (IMD) plus seven domains — Income, Employment, Education & skills, Health & disability, Crime, Barriers to housing & services, Living environment. Ranks and deciles sit within tier: districts/unitaries are ranked out of 296, county councils out of 153 — never compare a rank or decile across tiers. Decile 1 = most-deprived tenth, decile 10 = least-deprived tenth, within that pool. Score is the underlying IoD2025 value; higher score and lower decile both mean more deprived. Score and the national most-deprived-10% share are the only figures comparable across tiers, since they're set against all of England rather than within a pool.</p>
-        <p><strong>Limitations.</strong> Control is the current composition of each council, from Open Council Data UK (public domain) — not a historical snapshot. Deprivation is England-only: there's no directly comparable UK-wide index. Some councils have no matched Gateway minutes for FY2024-25, so their discussion panels are omitted. Keyword classification is crude: it counts what minutes mention, not what was decided.</p>
+        <p><strong>Quality of Life scorecard & league table.</strong> Seven outcome-based indicators with national ranks across England (Rank #X of 282):</p>
+        <ul>
+          <li><strong>Life Expectancy at Birth:</strong> ONS Health State Life Expectancies (2025, 2021–23 pool). England average: 81.9 yrs.</li>
+          <li><strong>GCSE Attainment 8:</strong> DfE Key Stage 4 performance (2023/24), average points per pupil across 8 GCSE subjects. England average: 46.1 pts.</li>
+          <li><strong>Rent Affordability:</strong> ONS PIPR private rents ÷ ASHE median gross full-time earnings. England average: 30.2%.</li>
+          <li><strong>Air Quality PM2.5:</strong> Defra / OHID Public Health Outcomes Framework, percentage of mortality attributable to fine particulate air pollution. England average: 5.8%.</li>
+          <li><strong>Child Poverty:</strong> DWP Children in Low Income Families, percentage of children under 16 in relative low-income households. England average: 20.1%.</li>
+          <li><strong>Claimant Rate:</strong> Nomis Claimant Count (July 2026), percentage of 16–64 population claiming unemployment benefits. England average: 4.2%.</li>
+          <li><strong>Crime Rate:</strong> ONS Community Safety Partnerships (2024), recorded offences per 1,000 residents. England average: 89.2.</li>
+        </ul>
+        <p><strong>Council tiers & remits.</strong> Shire Districts (lower-tier councils) deliver Housing, Local Planning, Waste Collection, and Leisure. Upper-tier County Councils provide Education, Adult & Children's Social Care, Public Health, and Highways. Unitary and London/Metropolitan Boroughs deliver all services under a single authority.</p>
+        <p><strong>Financial health check.</strong> Tracks statutory Section 114 spending freezes and MHCLG Exceptional Financial Support (EFS) capitalisation records (2024–2026).</p>
+        <p><strong>Limitations.</strong> Political control reflects current council composition from Open Council Data UK (2026). Some councils have incomplete Gateway minutes for FY2024-25, so discussion panels are omitted while retaining finance and outcome metrics. Keyword classification counts what minutes mention, not debate quality or voting outcomes.</p>
       </div>
     </details>
 
@@ -121,13 +134,6 @@
 
   <!-- ============================== NATIONAL TAB ============================== -->
   <section id="tab-national" class="tab-panel">
-
-    <section class="panel panel-wide" id="panel-distress-national">
-      <h2>Financial distress watchlist</h2>
-      <p class="lede">English local authorities operating under statutory Section 114 spending freezes or MHCLG Exceptional Financial Support (EFS) capitalisation directives.</p>
-      <div id="distress-watchlist-wrap"></div>
-      <p class="caption">Source: Ministry of Housing, Communities and Local Government (MHCLG) official financial intervention registers.</p>
-    </section>
 
     <section class="panel panel-wide" id="panel-party">
       <h2>Where the budget goes, by party</h2>
@@ -142,6 +148,18 @@
       <div id="party-discussion-chart"></div>
       <p class="caption">Equal-weighted mean discussion share across councils led by each party (outright majority, minority, or largest group). Source: Council Gateway API minutes, FY2024-25 · control from Open Council Data UK (2026).</p>
     </section>
+
+    <section class="panel panel-wide" id="panel-distress-national">
+      <h2>Financial distress watchlist</h2>
+      <p class="lede">English local authorities operating under statutory Section 114 spending freezes or MHCLG Exceptional Financial Support (EFS) capitalisation directives.</p>
+      <div id="distress-watchlist-wrap"></div>
+      <p class="caption">Source: Ministry of Housing, Communities and Local Government (MHCLG) official financial intervention registers.</p>
+    </section>
+
+  </section>
+
+  <!-- ============================== LEAGUE TABLE TAB ============================== -->
+  <section id="tab-league" class="tab-panel">
 
     <section class="panel panel-wide" id="panel-league">
       <h2>National Quality of Life League Table</h2>
@@ -239,6 +257,6 @@
 </div>
 
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" defer></script>
-<script src="app.js?v=20260824l" defer></script>
+<script src="app.js?v=20260825a" defer></script>
 </body>
 </html>

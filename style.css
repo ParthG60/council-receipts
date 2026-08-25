@@ -986,8 +986,80 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
 /* -------------------------------------------------------------- mobile --- */
 @media (max-width: 900px) {
   .container { padding: 24px 14px 40px; }
-  .grid-2 { grid-template-columns: 1fr; gap: 34px; }
+  .grid-2 { grid-template-columns: 1fr; gap: 28px; }
   .heat-strip { grid-template-columns: 1fr 1fr; }
+  .combobox-wrap { width: 100%; }
   #council-input { width: 100%; }
   header h1 { font-size: 2.5rem; }
+}
+
+@media (max-width: 640px) {
+  .container { padding: 16px 10px 36px; }
+  header h1 { font-size: clamp(2rem, 7.5vw, 2.6rem); }
+  header .tagline { font-size: 0.8rem; margin-bottom: 16px; }
+  
+  .tabs { display: flex; width: 100%; }
+  .tab { flex: 1; padding: 8px 6px; font-size: 0.72rem; letter-spacing: 0.04em; text-align: center; }
+  
+  .panel {
+    padding: 16px 12px 18px;
+    margin: 20px 0 24px;
+  }
+  
+  .panel-wide {
+    padding: 16px 8px 18px;
+  }
+  .panel-wide h2, .panel-wide .caption, .panel-wide .key-line, .panel-wide .toggle-group {
+    margin-left: 4px;
+    margin-right: 4px;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+  
+  .panel h2, details#panel-methodology summary {
+    font-size: 1.18rem;
+    margin-bottom: 8px;
+  }
+  
+  .big-number { font-size: 2.1rem; }
+  .key-line { font-size: 0.68rem; line-height: 1.5; margin-bottom: 8px; }
+  .caption { font-size: 0.68rem; }
+  
+  .qol-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .qol-card { padding: 12px 12px; }
+  .qol-value { font-size: 1.35rem; }
+  
+  .league-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .league-search-wrap { max-width: 100%; }
+  
+  #league-table-wrap, #distress-watchlist-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+  
+  table.league th, table.league td {
+    padding: 5px 6px;
+    font-size: 0.7rem;
+  }
+  
+  .toggle-btn {
+    padding: 5px 9px;
+    font-size: 0.68rem;
+  }
+  
+  .feedback-form {
+    padding: 14px 12px;
+  }
+  .form-row .form-group {
+    min-width: 100%;
+  }
 }

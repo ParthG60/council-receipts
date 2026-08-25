@@ -519,6 +519,24 @@ def main():
         if reading_links is not None:
             rl = reading_links[reading_links["council"] == cname].head(3)
             links = rl[["title", "url", "source"]].to_dict("records")
+        if not links:
+            links = [
+                {
+                    "title": f"Latest local news & reporting on {cname} Council",
+                    "url": f"https://news.google.com/search?q={cname.replace(' ', '+')}+council&hl=en-GB&gl=GB&ceid=GB:en",
+                    "source": "Google News UK",
+                },
+                {
+                    "title": f"BBC News coverage for {cname} Council",
+                    "url": f"https://www.bbc.co.uk/search?q={cname.replace(' ', '+')}+council&filter=news",
+                    "source": "BBC News",
+                },
+                {
+                    "title": f"Council Gateway meeting minutes & records for {cname}",
+                    "url": f"https://councilgateway.poteris.co.uk/",
+                    "source": "Council Gateway",
+                },
+            ]
 
         raw_class = la_class_raw.get(code, "UA" if r["tier"] == "lower" and code not in parent_county_map else "SD")
         out_councils[cname] = {

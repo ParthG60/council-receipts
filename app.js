@@ -39,6 +39,10 @@ let DATA = null;
 
 function el(id) { return document.getElementById(id); }
 
+function isMobile() {
+  return typeof window !== "undefined" && window.innerWidth < 640;
+}
+
 function fmtPopulation(n) {
   if (n == null) return null;
   if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + "M";
@@ -101,6 +105,7 @@ function initTabs() {
       document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
       btn.classList.add("active");
       el("tab-" + btn.dataset.tab).classList.add("active");
+      window.dispatchEvent(new Event("resize"));
     });
   });
 }
@@ -202,8 +207,11 @@ function initCouncilSelect() {
   }
 }
 
+let currentCouncilName = null;
+
 function renderCouncil(name) {
   if (!name || !DATA.councils[name]) return;
+  currentCouncilName = name;
   const c = DATA.councils[name];
 
   const panels = el("council-data-panels");
@@ -281,12 +289,14 @@ function renderPopulation(c) {
 
   el("race-key").innerHTML = hasEngland ? swatch(ACCENT, "This council") + " &nbsp; " + swatch(GREY, "England") : swatch(ACCENT, "This council");
 
+  const mob = isMobile();
   Plotly.newPlot(
     "race-chart", traces,
     {
       barmode: "group", showlegend: false,
-      margin: { l: 60, r: 40, t: 10, b: 30 },
-      height: chartHeight(cats.length, 32),
+      margin: { l: mob ? 48 : 60, r: mob ? 35 : 40, t: 10, b: 25 },
+      height: chartHeight(cats.length, mob ? 28 : 32),
+      font: { ...BASE_FONT, size: mob ? 10.5 : 12 },
       xaxis: { title: "", ticksuffix: "%", zeroline: false, range: headroomRange(allVals) },
       yaxis: { title: "" },
       template: "simple_white",
@@ -321,6 +331,7 @@ function renderAgePaired(c) {
 
   el("age-key").innerHTML = swatch(ACCENT, "This council") + " &nbsp; " + swatch(GREY, "England");
 
+  const mob = isMobile();
   Plotly.newPlot(
     "age-chart",
     [
@@ -329,8 +340,9 @@ function renderAgePaired(c) {
     ],
     {
       barmode: "group", showlegend: false,
-      margin: { l: 50, r: 40, t: 10, b: 30 },
-      height: chartHeight(bands.length, 44),
+      margin: { l: mob ? 42 : 50, r: mob ? 30 : 40, t: 10, b: 25 },
+      height: chartHeight(bands.length, mob ? 34 : 44),
+      font: { ...BASE_FONT, size: mob ? 10.5 : 12 },
       xaxis: { title: "", ticksuffix: "%", zeroline: false, range: headroomRange([...councilVals, ...englandVals]) },
       yaxis: { title: "" },
       template: "simple_white",
@@ -364,12 +376,14 @@ function renderAgePyramid(c) {
   ];
   const maxAbs = Math.max(...cMale.map(Math.abs), ...cFemale, ...eMale.map(Math.abs), ...eFemale, 1) * 1.3;
 
+  const mob = isMobile();
   Plotly.newPlot(
     "age-chart", traces,
     {
       barmode: "group", showlegend: false,
-      margin: { l: 50, r: 30, t: 30, b: 30 },
-      height: chartHeight(bands.length, 60),
+      margin: { l: mob ? 38 : 50, r: mob ? 24 : 30, t: 25, b: 25 },
+      height: chartHeight(bands.length, mob ? 32 : 52),
+      font: { ...BASE_FONT, size: mob ? 10 : 12 },
       xaxis: { title: "", zeroline: true, range: [-maxAbs, maxAbs], tickvals: [-maxAbs * 0.7, 0, maxAbs * 0.7], ticktext: ["◀ Male", "", "Female ▶"] },
       yaxis: { title: "" },
       template: "simple_white",
@@ -388,6 +402,7 @@ function renderTopicsChart(c, name) {
 
   el("topics-key").innerHTML = swatch(ACCENT, name) + " &nbsp; " + swatch(GREY, "England average");
 
+  const mob = isMobile();
   Plotly.newPlot(
     "topics-chart",
     [
@@ -396,8 +411,9 @@ function renderTopicsChart(c, name) {
     ],
     {
       barmode: "group", showlegend: false,
-      margin: { l: 168, r: 45, t: 10, b: 30 },
-      height: chartHeight(topics.length, 40),
+      margin: { l: mob ? 115 : 168, r: mob ? 35 : 45, t: 10, b: 25 },
+      height: chartHeight(topics.length, mob ? 34 : 40),
+      font: { ...BASE_FONT, size: mob ? 10.5 : 12 },
       xaxis: { title: "", ticksuffix: "%", zeroline: false, range: headroomRange([...councilVals, ...avgVals]) },
       yaxis: { title: "" },
       template: "simple_white",
@@ -459,12 +475,14 @@ function drawMoneyAbsolute(c) {
     }));
   }
 
+  const mob = isMobile();
   Plotly.newPlot(
     "money-chart", traces,
     {
       barmode: "group", showlegend: false,
-      margin: { l: 130, r: 65, t: 10, b: 30 },
-      height: chartHeight(services.length, 52),
+      margin: { l: mob ? 95 : 130, r: mob ? 48 : 65, t: 10, b: 25 },
+      height: chartHeight(services.length, mob ? 40 : 52),
+      font: { ...BASE_FONT, size: mob ? 10.5 : 12 },
       xaxis: { title: "", tickprefix: "£", zeroline: true, zerolinecolor: "#999", zerolinewidth: 1, range: headroomRange([...values, ...averages.filter((v) => v != null)]) },
       yaxis: { title: "" },
       template: "simple_white",
@@ -491,12 +509,14 @@ function drawMoneyShare(c) {
     withClip({ x: englandVals.slice().reverse(), y: topics.slice().reverse(), type: "bar", orientation: "h", marker: { color: GREY }, text: englandVals.slice().reverse().map((v) => v.toFixed(1) + "%"), textposition: "outside", hoverinfo: "skip" }),
   ];
 
+  const mob = isMobile();
   Plotly.newPlot(
     "money-chart", traces,
     {
       barmode: "group", showlegend: false,
-      margin: { l: 170, r: 45, t: 10, b: 30 },
-      height: chartHeight(topics.length, 52),
+      margin: { l: mob ? 115 : 170, r: mob ? 35 : 45, t: 10, b: 25 },
+      height: chartHeight(topics.length, mob ? 40 : 52),
+      font: { ...BASE_FONT, size: mob ? 10.5 : 12 },
       xaxis: { title: "", ticksuffix: "%", zeroline: false, range: headroomRange([...councilVals, ...englandVals]) },
       yaxis: { title: "" },
       template: "simple_white",
@@ -520,6 +540,7 @@ function renderTalkVsSpend(c) {
   if (c.talk_vs_spend.note) caption += " " + c.talk_vs_spend.note.charAt(0).toUpperCase() + c.talk_vs_spend.note.slice(1) + ".";
   el("tvs-caption").textContent = caption;
 
+  const mob = isMobile();
   Plotly.newPlot(
     "tvs-chart",
     [
@@ -528,6 +549,16 @@ function renderTalkVsSpend(c) {
     ],
     {
       barmode: "group", showlegend: false,
+      margin: { l: mob ? 115 : 168, r: mob ? 35 : 45, t: 10, b: 25 },
+      height: chartHeight(topics.length, mob ? 34 : 40),
+      font: { ...BASE_FONT, size: mob ? 10.5 : 12 },
+      xaxis: { title: "", ticksuffix: "%", zeroline: false, range: headroomRange([...spend, ...discussion]) },
+      yaxis: { title: "" },
+      template: "simple_white",
+    },
+    PLOTLY_CONFIG
+  );
+}
       margin: { l: 168, r: 45, t: 10, b: 30 },
       height: chartHeight(topics.length, 40),
       xaxis: { title: "", ticksuffix: "%", zeroline: false, range: headroomRange([...spend, ...discussion]) },
@@ -771,8 +802,15 @@ function renderPartyChart(chartId, keyId, groups, shareKey) {
   showPanel(panelId, !!hasData);
   if (!hasData) return;
 
+  const mob = isMobile();
   const topics = DATA.topics.filter((t) => groups.some((g) => (g[shareKey] || {})[t] != null));
-  const labels = groups.map((g) => `${g.party} (n=${g.n})`);
+  const labels = groups.map((g) => {
+    if (!mob) return `${g.party} (n=${g.n})`;
+    let p = g.party;
+    if (p === "Liberal Democrat") p = "Lib Dem";
+    else if (p === "Conservative") p = "Cons.";
+    return `${p} (n=${g.n})`;
+  });
 
   el(keyId).innerHTML = topics.map((t) => swatch(DATA.topic_colors[t] || GREY, t)).join(" &nbsp; ");
 
@@ -785,10 +823,10 @@ function renderPartyChart(chartId, keyId, groups, shareKey) {
       orientation: "h",
       name: t,
       marker: { color: DATA.topic_colors[t] || GREY },
-      text: vals.map((v) => (v >= 6 ? v.toFixed(0) + "%" : "")),
+      text: vals.map((v) => (v >= (mob ? 8 : 6) ? v.toFixed(0) + "%" : "")),
       textposition: "inside",
       insidetextanchor: "middle",
-      textfont: { color: "#fff", size: 12 },
+      textfont: { color: "#fff", size: mob ? 10 : 12 },
       hoverinfo: "skip",
     };
   });
@@ -797,9 +835,9 @@ function renderPartyChart(chartId, keyId, groups, shareKey) {
     chartId, traces,
     {
       barmode: "stack", showlegend: false,
-      margin: { l: 210, r: 20, t: 10, b: 30 },
-      height: chartHeight(groups.length, 64),
-      font: { size: 13 },
+      margin: { l: mob ? 105 : 210, r: mob ? 10 : 20, t: 10, b: 25 },
+      height: chartHeight(groups.length, mob ? 48 : 64),
+      font: { ...BASE_FONT, size: mob ? 10.5 : 13 },
       xaxis: { title: "", ticksuffix: "%", zeroline: false },
       yaxis: { title: "" },
       template: "simple_white",
@@ -991,7 +1029,29 @@ function initFeedbackForm() {
 window.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initFeedbackForm();
-  fetch("data.json?v=20260824l")
+
+  // Instant navigation when clicking any council link in tables
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest(".council-link");
+    if (link && link.href) {
+      try {
+        const url = new URL(link.href, window.location.origin);
+        const councilName = url.searchParams.get("council");
+        if (councilName && DATA && DATA.councils[councilName]) {
+          e.preventDefault();
+          history.pushState(null, "", `?council=${encodeURIComponent(councilName)}`);
+          const councilTabBtn = document.querySelector('.tab[data-tab="council"]');
+          if (councilTabBtn) councilTabBtn.click();
+          renderCouncil(councilName);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      } catch (err) {
+        // fallback to normal link navigation
+      }
+    }
+  });
+
+  fetch("data.json?v=20260825a")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
@@ -1006,4 +1066,23 @@ window.addEventListener("DOMContentLoaded", () => {
         `<p>Could not load data.json — run <code>python site/build.py</code> and serve this folder with <code>python -m http.server</code>.</p>`;
       console.error(err);
     });
+});
+
+let resizeTimer;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (currentCouncilName && DATA && DATA.councils[currentCouncilName]) {
+      const c = DATA.councils[currentCouncilName];
+      renderPopulation(c);
+      renderAgeChart(c);
+      renderTopicsChart(c, currentCouncilName);
+      renderMoneyChart(c);
+      renderTalkVsSpend(c);
+    }
+    if (DATA) {
+      renderPartyChart("party-chart", "party-key", DATA.party_groups_spend, "spend_share");
+      renderPartyChart("party-discussion-chart", "party-discussion-key", DATA.party_groups_discussion, "discussion_share");
+    }
+  }, 150);
 });
