@@ -294,6 +294,7 @@ function renderPopulation(c) {
   }));
 
   el("race-key").innerHTML = hasEngland ? swatch(ACCENT, "This council") + " &nbsp; " + swatch(GREY, "England") : swatch(ACCENT, "This council");
+  el("ethnicity-caption").textContent = c.ethnicity_source || "Ethnicity, Census 2021 (ONS)";
 
   const mob = isMobile();
   Plotly.newPlot(
@@ -1055,7 +1056,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20260825d")
+  fetch("data.json?v=20260825e")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;

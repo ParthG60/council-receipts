@@ -12,7 +12,7 @@ Sources, all joined on ons_code unless noted:
   - finance (£/res)   : data_england/finance_all.csv  + population_all.csv  (all 282)
   - deprivation       : data_england/scorecard_imd.csv (IoD2025, 8 domains)
   - control / party   : data_england/control_all.csv   (Open Council Data UK, 2026)
-  - ethnicity/age%    : data_england/profile_all.csv (267) + data/profile.csv (15 + England)
+  - ethnicity/age%    : data_england/ethnicity_all.csv (282 + England, APS or Census)
   - age pyramid       : data/age_bands.csv        (original 15 + England only)
   - reading links     : data/reading_links.csv    (original 15 only)
   - election banner    : data/elections.csv        (original 15 only)
@@ -278,26 +278,48 @@ def main():
         "LB": "London Borough (Single Tier)",
     }
 
-    # ethnicity/age%: profile_all (267, by ons) + data/profile.csv (15 + England, by name)
-    profile_all = read_csv_optional(ENG_DIR / "profile_all.csv")
-    profile_old = read_csv_optional(DATA_DIR / "profile.csv")
+    # ethnicity/age%: ethnicity_all.csv (282 + England, by ons_code, with source tag)
+    eth_all = read_csv_optional(ENG_DIR / "ethnicity_all.csv")
     eth_by_ons = {}
-    if profile_all is not None:
-        for _, p in profile_all.iterrows():
-            if pd.notna(p.get("white_pct")):
-                eth_by_ons[p["ons_code"]] = {"White": p["white_pct"], "Asian": p["asian_pct"],
-                                             "Black": p["black_pct"], "Mixed": p["mixed_pct"], "Other": p["other_pct"]}
-    eth_by_name = {}
     ethnicity_england = None
-    if profile_old is not None:
-        for _, p in profile_old.iterrows():
+    if eth_all is not None:
+        for _, p in eth_all.iterrows():
             if pd.notna(p.get("white_pct")):
-                e = {"White": p["white_pct"], "Asian": p["asian_pct"], "Black": p["black_pct"],
-                     "Mixed": p["mixed_pct"], "Other": p["other_pct"]}
-                if p["council"] == "England":
-                    ethnicity_england = e
+                e = {"White": p["white_pct"], "Asian": p["asian_pct"],
+                     "Black": p["black_pct"], "Mixed": p["mixed_pct"], "Other": p["other_pct"],
+                     "source": p["source"]}
+                if p["ons_code"] == "E92000001":
+                    ethnicity_england = {k: v for k, v in e.items() if k != "source"}
                 else:
-                    eth_by_name[p["council"]] = e
+                    eth_by_ons[p["ons_code"]] = e
+    # source lookup: ons_code -> source tag
+    eth_source_by_ons = {}
+    for code, e in eth_by_ons.items():
+        src = e.pop("source", None)
+        if src:
+            eth_source_by_ons[code] = src
+
+    # legacy fallback (Census 2021 for original 15 if new file absent)
+    if not eth_by_ons:
+        profile_all = read_csv_optional(ENG_DIR / "profile_all.csv")
+        profile_old = read_csv_optional(DATA_DIR / "profile.csv")
+        if profile_all is not None:
+            for _, p in profile_all.iterrows():
+                if pd.notna(p.get("white_pct")):
+                    eth_by_ons[p["ons_code"]] = {"White": p["white_pct"], "Asian": p["asian_pct"],
+                                                 "Black": p["black_pct"], "Mixed": p["mixed_pct"], "Other": p["other_pct"]}
+        if profile_old is not None:
+            for _, p in profile_old.iterrows():
+                if pd.notna(p.get("white_pct")):
+                    e = {"White": p["white_pct"], "Asian": p["asian_pct"], "Black": p["black_pct"],
+                         "Mixed": p["mixed_pct"], "Other": p["other_pct"]}
+                    if p["council"] == "England":
+                        ethnicity_england = e
+                    else:
+                        name = p["council"]
+                        code = next((c for c, r in reg.items() if r["name"] == name), None)
+                        if code:
+                            eth_by_ons.setdefault(code, e)
 
     elections = read_csv_optional(DATA_DIR / "elections.csv")
     reading_links = read_csv_optional(DATA_DIR / "reading_links.csv")
@@ -497,7 +519,7 @@ def main():
             if not e.empty:
                 elec = {"title": e.iloc[0]["title"], "poll_date": e.iloc[0]["poll_date"]}
 
-        ethnicity = eth_by_ons.get(code) or eth_by_name.get(cname)
+        ethnicity = eth_by_ons.get(code)
 
         m_share = None
         if cname in ft_shares:
@@ -551,6 +573,7 @@ def main():
             "election": elec,
             "population": int(population[code]) if code in population else None,
             "ethnicity": ethnicity,
+            "ethnicity_source": eth_source_by_ons.get(code, "Ethnicity, Census 2021 (ONS)"),
             "ethnicity_england": ethnicity_england,
             "topic_share": topic_share.get(code),
             "age_bands": age_by_name.get(cname),
