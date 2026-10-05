@@ -1,0 +1,61 @@
+# Scheduled refresh for Council Receipts.
+#
+# This workflow lives at the root of the deployable site repo
+# (ParthG60/council-receipts). It checks out the private data repo
+# (ParthG60/analysis-projects) for the raw shards + fetchers, rebuilds the site
+# artifacts, and commits them back to the site repo.
+#
+# Requires a repo secret DATA_REPO_TOKEN: a PAT with read access to
+# ParthG60/analysis-projects and write access to ParthG60/council-receipts.
+name: Refresh Council Receipts
+
+on:
+  schedule:
+    - cron: "0 6 1 * *"   # 06:00 UTC on the 1st of each month
+  workflow_dispatch: {}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout data repo (raw shards + fetchers)
+        uses: actions/checkout@v4
+        with:
+          repository: ParthG60/analysis-projects
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: data-repo
+
+      - name: Checkout deployable site repo (into the expected project path)
+        uses: actions/checkout@v4
+        with:
+          repository: ParthG60/council-receipts
+          token: ${{ secrets.DATA_REPO_TOKEN }}
+          path: data-repo/projects/council hack day/site
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pandas numpy plotly odfpy openpyxl
+
+      - name: Run pipeline (fetch, build, verify) + AI-native + forensic builds
+        working-directory: data-repo/projects/council hack day
+        run: |
+          python pipeline.py
+          python site/build_dossiers.py
+          python site/build_forensic.py
+
+      - name: Commit refreshed site artifacts
+        working-directory: data-repo/projects/council hack day/site
+        run: |
+          git config user.name "council-receipts-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data.json search_index search_index_global.json search_index.json \
+                  dossiers llms.txt housing-crime
+          if git diff --staged --quiet; then
+            echo "No data changes this run."
+          else
+            git commit -m "Scheduled data refresh ($(date -u +%Y-%m-%d))"
+            git push
+          fi

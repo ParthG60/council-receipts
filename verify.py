@@ -44,11 +44,12 @@ def main():
     def count(field, truthy=True):
         return sum(1 for c in councils.values() if (bool(c.get(field)) if truthy else c.get(field) is not None))
 
-    check(count("ombudsman") == 282, f"ombudsman data for all 282 (got {count('ombudsman')})")
     check(count("borrowing") == 282, f"borrowing data for all 282 (got {count('borrowing')})")
     check(count("money") >= 275, f"finance data for >=275 councils (got {count('money')})")
     check(count("topic_share") >= 230, f"topic share for >=230 councils (got {count('topic_share')})")
-    check(count("momentum") >= 218, f"momentum for >=218 councils (got {count('momentum')})")
+    cw = data.get("corpus_window")
+    check(bool(cw) and cw.get("label") and cw.get("docs", 0) > 0,
+          "discussion corpus window + doc count present")
     check(data.get("league_table", {}).get("rows") and len(data["league_table"]["rows"]) == 282,
           "league table has 282 rows")
 

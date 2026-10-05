@@ -145,6 +145,23 @@ def load_corpus_by_ons(id2ons):
     return shares
 
 
+def corpus_window(id2ons):
+    """Human-readable date span + document count of the loaded discussion corpus."""
+    corpus = _load_raw_corpus(id2ons)
+    if corpus is None or corpus.empty:
+        return None
+    d = pd.to_datetime(corpus["date"], errors="coerce").dropna()
+    if d.empty:
+        return None
+    lo, hi = d.min(), d.max()
+    return {
+        "from": lo.date().isoformat(),
+        "to": hi.date().isoformat(),
+        "label": f"{lo.strftime('%b %Y')} – {hi.strftime('%b %Y')}",
+        "docs": int(len(corpus)),
+    }
+
+
 def load_corpus_momentum(id2ons):
     """Monthly topic shares per council for momentum tracking.
     Returns {ons_code: {months: [str], series: {topic: [pct]}, changes: [...]}}.
@@ -412,11 +429,10 @@ def main():
     id2ons = {r["council_id"]: code for code, r in reg.items() if r["council_id"] is not None}
 
     corpus_shares = load_corpus_by_ons(id2ons)                 # ons -> {topic: pct}
-    momentum = load_corpus_momentum(id2ons)                    # ons -> monthly trends
+    window = corpus_window(id2ons)                             # {from,to,label,docs}
     finance_by_ons = load_finance_by_ons()                     # ons -> {service: spend_k}
     scorecard = load_scorecard(reg)                            # ons -> [8 domains]
     control = load_control()                                   # ons -> {...}
-    ombudsman = load_ombudsman()                               # ons -> watchdog
     borrowing = load_borrowing()                               # ons -> {total_gbp_m}
     contracts = load_contracts()                               # ons -> [suppliers]
 
@@ -737,41 +753,10 @@ def main():
 
         raw_class = la_class_raw.get(code, "UA" if r["tier"] == "lower" and code not in parent_county_map else "SD")
 
-        # ---- watchdog / commercial / briefing ---------------------------------
-        omb = ombudsman.get(code)
+        # ---- commercial / fiscal --------------------------------------------
         bor = borrowing.get(code)
         pop = population.get(code)
         debt_per_resident = round(bor["total_gbp_m"] * 1_000_000 / pop, 0) if (bor and bor.get("total_gbp_m") is not None and pop) else None
-
-        # talk-vs-spend disconnect: the matched topic with the largest |gap|
-        gap = None
-        if tvs and tvs.get("topics"):
-            g = max(tvs["topics"], key=lambda x: abs(x["discussion_pct"] - x["spend_pct"]))
-            gap = {"topic": g["topic"], "discussion_pct": g["discussion_pct"],
-                   "spend_pct": g["spend_pct"],
-                   "gap_pp": round(g["discussion_pct"] - g["spend_pct"], 1)}
-
-        # agenda surge: biggest rising momentum topic
-        surge = None
-        mom = momentum.get(code)
-        if mom and mom.get("changes"):
-            risers = [c for c in mom["changes"] if c["direction"] == "rising"]
-            if risers:
-                r0 = max(risers, key=lambda x: x["change_pp"])
-                surge = {"topic": r0["topic"], "change_pp": r0["change_pp"]}
-
-        briefing = {
-            "control": ctrl.get("current") if ctrl else None,
-            "control_since": ctrl.get("since") if ctrl else None,
-            "control_changed": bool(ctrl.get("changed")) if ctrl else False,
-            "distress_status": (distress_by_code.get(code) or {}).get("distress_status", "Stable"),
-            "is_s114": (distress_by_code.get(code) or {}).get("is_s114", False),
-            "debt_per_resident": debt_per_resident,
-            "uphold_rate": omb.get("uphold_rate") if omb else None,
-            "uphold_rate_peer": omb.get("uphold_rate_peer") if omb else None,
-            "gap": gap,
-            "surge": surge,
-        }
 
         out_councils[cname] = {
             "id": r["council_id"], "ons_code": code, "tier": r["tier"],
@@ -796,12 +781,9 @@ def main():
             "qol": qol_by_code.get(code),
             "financial_distress": distress_by_code.get(code),
             "reading_links": links,
-            "momentum": momentum.get(code),
-            "ombudsman": omb,
             "borrowing": ({"total_gbp_m": bor["total_gbp_m"], "per_resident": debt_per_resident}
                           if bor and bor.get("total_gbp_m") is not None else None),
             "contracts": contracts.get(code),
-            "briefing": briefing,
         }
 
     data = {
@@ -810,6 +792,7 @@ def main():
         "neutral_grey": NEUTRAL_GREY,
         "taxonomy_examples": TAXONOMY_EXAMPLES,
         "corpus_avg_topic_share": corpus_avg,
+        "corpus_window": window,
         "money_average_per_resident": money_weighted_avg,
         "money_median_per_resident": money_weighted_avg,
         "finance_topics_england": ft_england,

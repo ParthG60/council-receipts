@@ -1506,3 +1506,41 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
   .brief-value { font-size: 1.15rem; }
   .stat-value { font-size: 1.25rem; }
 }
+
+/* ---------------------------------------------- standout benchmark flags --- */
+.standout-badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 2px; }
+.standout-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 0.72rem; line-height: 1.3;
+  padding: 5px 10px; border: 1.5px solid var(--rule);
+  background: var(--receipt); color: var(--ink-soft); border-radius: 2px;
+}
+.standout-icon { font-size: 0.85rem; }
+.standout-badge.good { border-color: #4d9221; color: #2f6b12; background: #f2f8ec; }
+.standout-badge.bad { border-color: #c0392b; color: #8f2b1f; background: #fdf1ef; }
+.standout-badge.crit { border-color: #8f2b1f; color: #fff; background: var(--stamp); font-weight: 600; }
+.standout-badge.warn { border-color: #c99a2e; color: #7a5c12; background: #fdf7e8; }
+.standout-badge.neutral { color: var(--faint); }
+
+/* --------------------------------------------------- AI-native actions --- */
+.council-actions { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 4px; }
+.ai-btn {
+  appearance: none; font-family: var(--mono); font-size: 0.74rem;
+  padding: 8px 14px; border: 1.5px solid var(--ink);
+  background: var(--ink); color: var(--receipt); cursor: pointer;
+  text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.ai-btn:hover { background: var(--stamp); border-color: var(--stamp); color: #fff; }
+.ai-btn.ghost { background: transparent; color: var(--ink); }
+.ai-btn.ghost:hover { background: var(--stamp-soft); color: var(--ink); }
+
+/* selected topic chips in document search */
+.docsearch-chip.active { background: var(--ink); color: var(--receipt); border-color: var(--ink); }
+.docsearch-chip.active em { color: var(--receipt); }
+
+@media (max-width: 640px) {
+  .standout-badges { gap: 6px; }
+  .standout-badge { font-size: 0.66rem; padding: 4px 8px; }
+  .ai-btn { font-size: 0.68rem; padding: 7px 10px; }
+}

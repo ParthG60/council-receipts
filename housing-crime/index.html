@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Housing & Crime Forensic Terminal · Council Receipts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=20261005a">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="dot"></span> TOWN HALL RECEIPTS · <strong>HOUSING &amp; CRIME</strong> FORENSIC TERMINAL</div>
+  <a class="back" href="../">← Council Receipts</a>
+</header>
+
+<nav class="vtabs">
+  <button class="vtab active" data-view="matrix">England pressure matrix</button>
+  <button class="vtab" data-view="dossier">Council paper trail</button>
+  <button class="vtab" data-view="ai">MCP &amp; AI</button>
+</nav>
+
+<main>
+  <!-- ============================ MATRIX ============================ -->
+  <section id="view-matrix" class="view active">
+    <p class="lede">Every English council with rent and crime data, plotted by <strong>rent unaffordability</strong> (x) against <strong>recorded crime</strong> (y). Bubble size = number of housing/crime executive decisions found. Hover to inspect; click to open the paper trail.</p>
+    <div id="matrix-chart"></div>
+    <p class="caption" id="matrix-caption"></p>
+  </section>
+
+  <!-- ============================ DOSSIER ============================ -->
+  <section id="view-dossier" class="view">
+    <div class="picker-wrap">
+      <input type="text" id="council-input" list="council-list" placeholder="Search a council (e.g. Westminster, Manchester)…" autocomplete="off">
+      <datalist id="council-list"></datalist>
+      <button id="load-btn" class="ghost-btn">Load paper trail</button>
+    </div>
+    <div id="dossier" class="dossier">
+      <p class="empty">Pick a council to open its housing &amp; crime paper trail.</p>
+    </div>
+  </section>
+
+  <!-- ============================ AI / MCP ============================ -->
+  <section id="view-ai" class="view">
+    <h2>AI-native by design</h2>
+    <p class="lede">Three ways to point your own AI at verified data — no scraping, no guessing.</p>
+    <div class="ai-grid">
+      <div class="ai-card">
+        <h3>1 · Copy an investigation dossier</h3>
+        <p>On any council's paper trail, hit <em>Copy dossier for AI</em>. It bundles verified pressure metrics, spend, and the recent decision trail into a compact prompt you paste into ChatGPT or Claude.</p>
+      </div>
+      <div class="ai-card">
+        <h3>2 · Point an agent at the raw data</h3>
+        <p>Machine-readable endpoints for LLM web agents:</p>
+        <ul>
+          <li><a href="llms.txt" target="_blank">llms.txt</a> — schema &amp; index</li>
+          <li><a href="data.json" target="_blank">data.json</a> — full dataset</li>
+          <li><a href="dossiers/index.txt" target="_blank">dossiers/index.txt</a> — plain-text dossiers</li>
+        </ul>
+      </div>
+      <div class="ai-card">
+        <h3>3 · Run the MCP server</h3>
+        <p>The repo ships <code>mcp_server.py</code> — a Model Context Protocol server. Add it to Claude Desktop / Claude Code and ask questions like:</p>
+        <pre>search_decisions(council="Westminster",
+  category="housing_ta", min_value=100000)</pre>
+        <p class="muted">Tools: <code>list_councils</code>, <code>get_council_dossier</code>, <code>search_decisions</code>, <code>generate_foi</code>.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <span id="foot-meta"></span> · Sources: Council Gateway (Poteris) · MHCLG · ONS · DfE · DWP · Defra/OHID
+</footer>
+
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js" defer></script>
+<script src="app.js?v=20261005a" defer></script>
+</body>
+</html>

@@ -244,21 +244,185 @@ function renderCouncil(name) {
 
   renderControlLine(c);
   renderElectionBanner(c);
-  renderBriefing(c);
+  renderStandout(c);
   renderDistress(c);
   renderPopulation(c);
   renderAgeChart(c);
   renderTopicsChart(c, name);
+  const w = DATA.corpus_window;
+  const cap = el("topics-caption");
+  if (cap && w && c.topic_share) cap.textContent = `Source: Council Gateway API meeting minutes, ${w.label} (${w.docs.toLocaleString("en-GB")} documents classified). Share of all topic keyword hits.`;
   renderMoneyChart(c);
   renderTalkVsSpend(c);
   renderBorrowing(c);
   renderContracts(c);
-  renderOmbudsman(c);
   renderQoL(c);
-  renderReadingLinks(c);
-  renderMomentum(c);
+  renderSmartLinks(c);
   renderDocumentSearch(c);
   renderTaxonomyTable();
+}
+
+// ---------------------------------------------- standout benchmark flags ---
+// Instant "what stands out about this council" pills from national ranks.
+// Rank convention in data.json: 1 = best on every QoL indicator.
+const QOL_N = 282;
+
+function borrowingPercentiles() {
+  const vals = Object.values(DATA.councils)
+    .map((c) => (c.borrowing ? c.borrowing.per_resident : null))
+    .filter((v) => v != null)
+    .sort((a, b) => a - b);
+  if (!vals.length) return { p10: null, p90: null };
+  return { p10: vals[Math.floor(vals.length * 0.1)], p90: vals[Math.floor(vals.length * 0.9)] };
+}
+
+function renderStandout(c) {
+  const box = el("standout-badges");
+  if (!box) return;
+  const q = c.qol || {};
+  const badges = [];
+
+  // Financial distress first — the most consequential signal.
+  const d = c.financial_distress;
+  if (d && d.severity >= 2) {
+    badges.push(d.severity === 3
+      ? { cls: "crit", icon: "⚠️", text: `Section 114 notice${d.s114_year ? " (" + d.s114_year + ")" : ""}` }
+      : { cls: "crit", icon: "⚡", text: `Exceptional Financial Support${d.efs_amount_gbp_m != null ? " (£" + d.efs_amount_gbp_m + "m)" : ""}` });
+  }
+
+  // Crime — both extremes are worth flagging.
+  if (q.crime_rank != null) {
+    if (q.crime_rank >= QOL_N * 0.8) badges.push({ cls: "bad", icon: "🚨", text: `High crime: ${q.crime_per_1000}/1k (#${q.crime_rank})` });
+    else if (q.crime_rank <= QOL_N * 0.2) badges.push({ cls: "good", icon: "🟢", text: `Low crime: ${q.crime_per_1000}/1k (#${q.crime_rank})` });
+  }
+
+  // Housing affordability pressure.
+  if (q.rent_affordability_rank != null) {
+    if (q.rent_affordability_rank >= QOL_N * 0.8) badges.push({ cls: "bad", icon: "🚨", text: `Severe rent strain: ${q.rent_affordability}% of pay (#${q.rent_affordability_rank})` });
+    else if (q.rent_affordability_rank <= QOL_N * 0.2) badges.push({ cls: "good", icon: "🟢", text: `Affordable rents: ${q.rent_affordability}% of pay (#${q.rent_affordability_rank})` });
+  }
+
+  // Child poverty.
+  if (q.child_poverty_rank != null && q.child_poverty_rank >= QOL_N * 0.8)
+    badges.push({ cls: "bad", icon: "🚩", text: `High child poverty: ${q.child_poverty_pct}% (#${q.child_poverty_rank})` });
+
+  // Borrowing per resident vs national deciles.
+  const b = c.borrowing;
+  const { p10, p90 } = borrowingPercentiles();
+  if (b && b.per_resident != null && p90 != null) {
+    if (b.per_resident >= p90) badges.push({ cls: "bad", icon: "🔴", text: `Heavy debt: £${Math.round(b.per_resident).toLocaleString("en-GB")}/resident` });
+    else if (b.per_resident <= p10) badges.push({ cls: "good", icon: "🟢", text: `Low debt: £${Math.round(b.per_resident).toLocaleString("en-GB")}/resident` });
+  }
+
+  // Talk-vs-spend disconnect (the "receipts" check).
+  const tvs = (c.talk_vs_spend && c.talk_vs_spend.topics) || [];
+  const gap = tvs.slice().sort((a, b2) => Math.abs(b2.spend_pct - b2.discussion_pct) - Math.abs(a.spend_pct - a.discussion_pct))[0];
+  if (gap && Math.abs(gap.spend_pct - gap.discussion_pct) >= 12)
+    badges.push({ cls: "warn", icon: "⚡", text: `${gap.topic}: ${gap.spend_pct.toFixed(0)}% of budget, ${gap.discussion_pct.toFixed(0)}% of debate` });
+
+  const shown = badges.slice(0, 5);
+  box.innerHTML = shown.length
+    ? shown.map((b2) => `<span class="standout-badge ${b2.cls}"><span class="standout-icon">${b2.icon}</span>${b2.text}</span>`).join("")
+    : `<span class="standout-badge neutral">No standout national extremes for this council.</span>`;
+
+  const fl = el("forensic-link");
+  if (fl && c.ons_code) fl.href = `housing-crime/index.html?council=${encodeURIComponent(c.ons_code)}`;
+}
+
+// ------------------------------------------------------- smart links ---
+function smartLinks(c) {
+  const name = c.name || "";
+  const q = encodeURIComponent(`"${name}" (cabinet OR scrutiny OR budget OR audit OR "section 114")`);
+  const links = [
+    { title: "Search this council's committee meetings & minutes", url: `https://www.google.com/search?q=${encodeURIComponent(name + " council committee meetings minutes")}`, source: "minutes" },
+    { title: `Crime map & statistics for ${name}`, url: `https://www.police.uk/`, source: "police" },
+    { title: "Local planning applications register", url: `https://www.google.com/search?q=${encodeURIComponent(name + " council planning applications search")}`, source: "planning" },
+    { title: "Scrutiny, budget & audit news", url: `https://news.google.com/search?q=${q}`, source: "news" },
+    { title: "MHCLG local authority financial profile", url: `https://www.gov.uk/government/collections/local-authority-revenue-expenditure-and-financing`, source: "finance" },
+  ];
+  if (c.ons_code) links.push({ title: "Plain-text AI dossier (.md)", url: `dossiers/${c.ons_code}.md`, source: "ai" });
+  return links;
+}
+
+function renderSmartLinks(c) {
+  const links = smartLinks(c);
+  const panel = el("panel-links");
+  showPanel("panel-links", true);
+  if (!panel) return;
+  el("reading-links").innerHTML = links
+    .map((l) => `<li><a href="${l.url}" target="_blank" rel="noopener">${l.title}</a><span class="source-tag">${l.source}</span></li>`)
+    .join("");
+}
+
+// ------------------------------------------------ AI-native citizen brief ---
+// One-click, token-efficient Markdown dossier a resident can paste into their
+// own ChatGPT / Claude to interrogate their council's numbers.
+function buildCitizenBriefing(c) {
+  const q = c.qol || {};
+  const d = c.financial_distress || {};
+  const b = c.borrowing || {};
+  const tvs = (c.talk_vs_spend && c.talk_vs_spend.topics) || [];
+  const gap = tvs.slice().sort((a, b2) => Math.abs(b2.spend_pct - b2.discussion_pct) - Math.abs(a.spend_pct - a.discussion_pct))[0];
+  const L = [];
+  L.push(`# Citizen briefing: ${c.name} (${c.ons_code || "n/a"})`);
+  L.push(`- Tier: ${c.la_class_label || c.tier || "n/a"}${c.parent_county ? " (part of " + c.parent_county + ")" : ""}`);
+  L.push(`- Political control: ${c.party_full || c.party || "n/a"}`);
+  L.push(`- Population: ${c.population != null ? c.population.toLocaleString("en-GB") : "n/a"}`);
+  L.push("");
+  L.push("## Outcomes (national rank out of 282; rank #1 = best)");
+  const qrow = [
+    ["Life expectancy (yrs)", q.life_expectancy, q.life_expectancy_rank],
+    ["GCSE Attainment 8 (pts)", q.attainment8, q.attainment8_rank],
+    ["Rent affordability (% of pay)", q.rent_affordability, q.rent_affordability_rank],
+    ["Child poverty (%)", q.child_poverty_pct, q.child_poverty_rank],
+    ["Claimant rate (%)", q.claimant_rate_pct, q.claimant_rate_rank],
+    ["Crime per 1,000", q.crime_per_1000, q.crime_rank],
+  ];
+  qrow.forEach(([label, val, rank]) => { if (val != null) L.push(`- ${label}: ${val}${rank != null ? ` (rank #${rank})` : ""}`); });
+  L.push("");
+  L.push("## Financial health");
+  L.push(`- Status: ${d.severity >= 2 ? d.distress_status : "No active S114 / EFS intervention"}`);
+  if (d.is_efs && d.efs_amount_gbp_m != null) L.push(`- Exceptional Financial Support: £${d.efs_amount_gbp_m}m`);
+  if (b.per_resident != null) L.push(`- Borrowing per resident: £${Math.round(b.per_resident).toLocaleString("en-GB")}`);
+  if (gap) L.push(`- Biggest talk-vs-spend gap: ${gap.topic} takes ${gap.spend_pct.toFixed(0)}% of the budget but ${gap.discussion_pct.toFixed(0)}% of committee debate`);
+  L.push("");
+  L.push("## Ask");
+  L.push("You are advising a resident on their local council. Using ONLY the verified figures above:");
+  L.push("1. Give three sharp questions I could put to my councillor at their next surgery.");
+  L.push("2. Name the single biggest financial risk the council faces.");
+  L.push("3. Say how local services here compare with England overall.");
+  L.push("If something is not in the data, say so rather than guessing.");
+  return L.join("\n");
+}
+
+function initCopyBriefing() {
+  const btn = el("copy-briefing-btn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    if (!currentCouncilName || !DATA || !DATA.councils[currentCouncilName]) return;
+    const text = buildCitizenBriefing(DATA.councils[currentCouncilName]);
+    const done = () => {
+      const old = btn.textContent;
+      btn.textContent = "✓ Copied for your AI";
+      setTimeout(() => { btn.textContent = old; }, 1800);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => fallbackCopy(text, done));
+    } else {
+      fallbackCopy(text, done);
+    }
+  });
+}
+
+function fallbackCopy(text, done) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); done(); } catch (e) { /* noop */ }
+  document.body.removeChild(ta);
 }
 
 function renderControlLine(c) {
@@ -996,6 +1160,7 @@ function renderMomentum(c) {
 let docSearchCache = null;      // per-council raw doc list (compact format)
 let docSearchCouncil = null;
 let docSearchIndex = null;      // mini inverted index: token -> Set(docIdx)
+let docSearchTopics = new Set(); // active exact-topic filters (decoupled from text input)
 
 // Compact search index field names: d=date, m=meeting, s=snippet, u=pdf_url, t=topics[]
 const STOPWORDS = new Set([
@@ -1023,6 +1188,7 @@ function docSearchLoad(c) {
   docSearchCouncil = c;
   docSearchCache = null;
   docSearchIndex = null;
+  docSearchTopics = new Set();
   el("docsearch-results").innerHTML = `<p class="empty-note">Loading documents…</p>`;
   el("docsearch-stats").textContent = "";
   // Search index file named by the council's ONS code
@@ -1092,49 +1258,36 @@ function renderDocSearchResults() {
     topicChips.querySelectorAll(".docsearch-chip").forEach((btn) => {
       btn.addEventListener("click", () => {
         const t = btn.dataset.topic;
-        const iv = el("docsearch-input");
-        // Toggle: clicking again removes the topic filter
-        const tokens = (iv.value || "").split(/\s+/).filter(Boolean);
-        const tk = "@" + t.toLowerCase();
-        if (tokens.includes(tk)) {
-          iv.value = tokens.filter((x) => x !== tk).join(" ");
-        } else {
-          iv.value = tokens.filter((x) => !x.startsWith("@")).concat(tk).join(" ");
-        }
+        // Toggle this topic in/out of the active filter set (exact-name, case-insensitive).
+        if (docSearchTopics.has(t)) docSearchTopics.delete(t);
+        else docSearchTopics.add(t);
+        btn.classList.toggle("active", docSearchTopics.has(t));
         renderDocSearchResults();
       });
     });
   }
 
-  // Search: split into tokens; @topic = topic filter, plain token = substring match
+  // Search: split into text tokens (topic filters are held separately in a Set).
   const tokens = q.split(/\s+/).filter(Boolean);
-  const topicFilter = tokens.filter((t) => t.startsWith("@")).map((t) => t.slice(1));
-  const textTokens = tokens.filter((t) => !t.startsWith("@"));
+  const textTokens = tokens.filter((t) => /[a-z0-9]/.test(t));
 
   let results = docs;
   if (textTokens.length) {
-    const sets = textTokens.map((tk) => {
-      const hit = new Set();
-      docSearchIndex.forEach((s) => { if (tk.test) ; });
-      // Simple char-search on the combined index is too slow; use token index
-      const key = tk;
-      const tokenSet = docSearchIndex.get(key);
-      return tokenSet || new Set();
-    });
-    if (sets.length) {
-      let combined = new Set(sets[0]);
-      for (let i = 1; i < sets.length; i++) {
-        const next = new Set();
-        combined.forEach((v) => { if (sets[i].has(v)) next.add(v); });
-        combined = next;
-      }
-      results = combined.size ? [...combined].sort((a, b) => a - b).map((i) => docs[i]) : [];
+    const sets = textTokens.map((tk) => docSearchIndex.get(tk) || new Set());
+    let combined = new Set(sets[0]);
+    for (let i = 1; i < sets.length; i++) {
+      const next = new Set();
+      combined.forEach((v) => { if (sets[i].has(v)) next.add(v); });
+      combined = next;
     }
+    results = combined.size ? [...combined].sort((a, b) => a - b).map((i) => docs[i]) : [];
   }
 
-  // Apply topic filter (OR across topics) — topics is now an array
+  // Apply topic filter (OR across selected topics, case-insensitive exact name match)
+  const topicFilter = [...docSearchTopics];
   if (topicFilter.length) {
-    results = results.filter((d) => topicFilter.some((t) => (d.t || []).includes(t)));
+    const wanted = topicFilter.map((t) => t.toLowerCase());
+    results = results.filter((d) => (d.t || []).some((t) => wanted.includes(t.toLowerCase())));
   }
 
   // Sort newest first (dates are ISO strings)
@@ -1665,8 +1818,8 @@ function renderGlobalResults(q, councils, toks) {
 // -------------------------------------------------------------- init ---
 window.addEventListener("DOMContentLoaded", () => {
   initTabs();
-  initSectionTabs();
   initFeedbackForm();
+  initCopyBriefing();
 
   // Instant navigation when clicking any council link in tables
   document.addEventListener("click", (e) => {
@@ -1718,7 +1871,6 @@ window.addEventListener("resize", () => {
       renderTopicsChart(c, currentCouncilName);
       renderMoneyChart(c);
       renderTalkVsSpend(c);
-      renderMomentum(c);
     }
     if (DATA) {
       redrawPartyCharts();
