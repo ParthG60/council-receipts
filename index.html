@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20260825e">
+<link rel="stylesheet" href="style.css?v=20261005a">
 </head>
 <body>
 <div class="container">
@@ -16,6 +16,12 @@
     <p class="kicker">★ Campaign Lab · every English council · open data ★</p>
     <h1>Council Receipts</h1>
     <p class="tagline">What your council talks about, and where the money goes. <em>Show me the receipts.</em></p>
+
+    <div class="omnibox-wrap">
+      <input type="text" id="omnibox" class="omnibox" placeholder="Search a council, an issue, or a contractor (e.g. Sheffield, temporary accommodation, RAAC, Capita)…" autocomplete="off" aria-label="Search councils, issues and contractors">
+      <div id="omnibox-menu" class="omnibox-menu" style="display:none;"></div>
+    </div>
+
     <nav class="tabs">
       <button class="tab active" data-tab="council">Your council</button>
       <button class="tab" data-tab="national">National</button>
@@ -43,6 +49,17 @@
     </div>
 
     <div id="council-data-panels" class="council-data-panels" style="display:none;">
+      <div id="exec-briefing" class="exec-briefing"></div>
+
+      <nav class="section-tabs" id="section-tabs" aria-label="Council sections">
+        <button class="section-tab active" data-section="overview">Overview</button>
+        <button class="section-tab" data-section="agenda">Agenda &amp; minutes</button>
+        <button class="section-tab" data-section="money">Money &amp; contracts</button>
+        <button class="section-tab" data-section="outcomes">Outcomes &amp; watchdog</button>
+      </nav>
+
+      <!-- ============================ OVERVIEW ============================ -->
+      <div class="section-body active" data-section-body="overview">
       <div class="grid-2">
         <section class="panel" id="panel-population">
           <h2>Population</h2>
@@ -61,6 +78,14 @@
         </section>
       </div>
 
+      <section class="panel" id="panel-links">
+        <h2>Read up on it</h2>
+        <ul id="reading-links"></ul>
+      </section>
+      </div><!-- /overview -->
+
+      <!-- ========================= AGENDA & MINUTES ========================= -->
+      <div class="section-body" data-section-body="agenda">
       <section class="panel" id="panel-topics">
         <h2>What they talk about</h2>
         <div class="key-line" id="topics-key"></div>
@@ -68,6 +93,31 @@
         <p class="caption">Source: Council Gateway API meeting minutes, FY2024-25 (Oct 2024–Mar 2025, matched to the spend year below). Share of all topic keyword hits.</p>
       </section>
 
+      <section class="panel" id="panel-momentum">
+        <h2>Topic momentum: what's gaining steam</h2>
+        <p class="lede">How topic discussion shares shifted month-to-month from Oct 2024 to Mar 2025 — where attention is growing and where it's fading.</p>
+        <div class="key-line" id="momentum-key"></div>
+        <div id="momentum-chart"></div>
+        <div id="momentum-bar"></div>
+        <p class="caption">Each line shows a topic's percentage of all keyword hits in a given month. The bar chart above compares the average of the last 2 months vs the 2 months before that. Source: Council Gateway API meeting minutes, FY2024-25.</p>
+      </section>
+
+      <section class="panel" id="panel-docsearch">
+        <h2>Search council documents</h2>
+        <p class="lede">Search actual meeting minutes, agendas, and reports from this council's meetings.</p>
+        <div class="docsearch-controls">
+          <input type="text" id="docsearch-input" placeholder="Search by keyword, topic, or phrase…" autocomplete="off">
+          <button type="button" id="docsearch-clear" class="docsearch-clear-btn">Clear</button>
+        </div>
+        <div id="docsearch-topics" class="docsearch-topics"></div>
+        <div id="docsearch-stats" class="docsearch-stats"></div>
+        <div id="docsearch-results"></div>
+        <p class="caption" id="docsearch-caption">Showing up to 200 most recent matching documents. Each result links to the original council PDF.</p>
+      </section>
+      </div><!-- /agenda -->
+
+      <!-- ======================== MONEY & CONTRACTS ======================== -->
+      <div class="section-body" data-section-body="money">
       <section class="panel" id="panel-money">
         <h2>Where the budget goes</h2>
         <p class="lede" id="money-lede">£ per resident going into each service (staff plus running costs).</p>
@@ -87,10 +137,28 @@
         <p class="caption" id="tvs-caption"></p>
       </section>
 
-      <section class="panel" id="panel-distress">
-        <h2>Financial health & distress check</h2>
-        <div id="distress-status-box"></div>
-        <p class="caption" id="distress-caption">Source: MHCLG Section 114 statutory notices & Exceptional Financial Support (EFS) capitalisation records (2024–2026).</p>
+      <section class="panel" id="panel-borrowing">
+        <h2>Borrowing &amp; debt</h2>
+        <p class="lede">Outstanding borrowing owed by the council — a lead indicator of financial stress.</p>
+        <div id="borrowing-body" class="stat-grid"></div>
+        <p class="caption">Source: MHCLG Quarterly Borrowing &amp; Investment Live Table (latest quarter). Total outstanding borrowing across all loan and securities categories. Per-resident uses ONS mid-2024 population.</p>
+      </section>
+
+      <section class="panel" id="panel-contracts">
+        <h2>Who gets the money: largest contract awards</h2>
+        <p class="lede">The biggest single-supplier contracts this council has published to Contracts Finder.</p>
+        <div id="contracts-body"></div>
+        <p class="caption">Source: Crown Commercial Service Contracts Finder (awarded contracts). Values are the published award values and may reflect framework ceilings; multi-supplier framework lots are excluded.</p>
+      </section>
+      </div><!-- /money -->
+
+      <!-- ======================== OUTCOMES & WATCHDOG ======================== -->
+      <div class="section-body" data-section-body="outcomes">
+      <section class="panel" id="panel-ombudsman">
+        <h2>Ombudsman watchdog</h2>
+        <p class="lede">How often the Local Government &amp; Social Care Ombudsman found this council at fault, vs similar authorities.</p>
+        <div id="ombudsman-body" class="stat-grid"></div>
+        <p class="caption">Source: Local Government &amp; Social Care Ombudsman annual review 2024-25. "Upheld" means the Ombudsman investigated and found the council at fault. Peer average is the Ombudsman's own "similar authorities" comparator.</p>
       </section>
 
       <section class="panel" id="panel-qol">
@@ -99,13 +167,15 @@
         <p class="caption">Sources: ONS Health State Life Expectancies (2025) · DfE GCSE Attainment 8 (2023/24) · ONS Private Rent Affordability (PIPR/ASHE) · Defra/OHID PM2.5 Mortality Fraction · DWP Children in Low Income Families · Nomis Claimant Count (July 2026) · ONS CSP Crime (2024).</p>
       </section>
 
-      <section class="panel" id="panel-links">
-        <h2>Read up on it</h2>
-        <ul id="reading-links"></ul>
+      <section class="panel" id="panel-distress">
+        <h2>Financial health &amp; distress check</h2>
+        <div id="distress-status-box"></div>
+        <p class="caption" id="distress-caption">Source: MHCLG Section 114 statutory notices &amp; Exceptional Financial Support (EFS) capitalisation records (2024–2026).</p>
       </section>
+      </div><!-- /outcomes -->
     </div>
 
-    <details class="panel" id="panel-methodology">
+      <details class="panel" id="panel-methodology">
       <summary>Methodology</summary>
       <div id="methodology-text">
         <p><strong>What it is.</strong> Covers all 282 English local authorities in the Council Gateway across the political spectrum. Pick any council to explore what it talks about, where its money goes, and how it compares on key outcome metrics.</p>
@@ -135,18 +205,31 @@
   <!-- ============================== NATIONAL TAB ============================== -->
   <section id="tab-national" class="tab-panel">
 
+    <section class="panel panel-wide" id="panel-global-search" style="display:none;">
+      <h2 id="global-search-heading">Cross-council search</h2>
+      <p class="lede" id="global-search-lede"></p>
+      <div id="global-search-results"></div>
+    </section>
+
     <section class="panel panel-wide" id="panel-party">
       <h2>Where the budget goes, by party</h2>
+      <p class="lede">Councils do different jobs at different tiers, so comparing all 282 at once is misleading — a shire district has no social care budget at all. Pick a comparable group:</p>
+      <div class="toggle-group tier-toggle" id="party-tier-toggle">
+        <button class="toggle-btn active" data-tier="single">Single-tier (all services)</button>
+        <button class="toggle-btn" data-tier="district">Shire districts</button>
+        <button class="toggle-btn" data-tier="county">Shire counties</button>
+        <button class="toggle-btn" data-tier="all">All authorities</button>
+      </div>
       <div class="key-line" id="party-key"></div>
       <div id="party-chart"></div>
-      <p class="caption" id="party-caption">Equal-weighted mean spend share across councils led by each party (outright majority, minority, or largest group). Source: MHCLG Revenue Outturn 2024-25 · control from Open Council Data UK (2026).</p>
+      <p class="caption" id="party-caption">Equal-weighted mean spend share across councils led by each party (outright majority, minority, or largest group). n = number of councils in the group. Source: MHCLG Revenue Outturn 2024-25 · control from Open Council Data UK (2026).</p>
     </section>
 
     <section class="panel panel-wide" id="panel-party-discussion">
       <h2>What they talk about, by party</h2>
       <div class="key-line" id="party-discussion-key"></div>
       <div id="party-discussion-chart"></div>
-      <p class="caption">Equal-weighted mean discussion share across councils led by each party (outright majority, minority, or largest group). Source: Council Gateway API minutes, FY2024-25 · control from Open Council Data UK (2026).</p>
+      <p class="caption" id="party-discussion-caption">Equal-weighted mean discussion share across councils led by each party (outright majority, minority, or largest group). Source: Council Gateway API minutes, FY2024-25 · control from Open Council Data UK (2026).</p>
     </section>
 
     <section class="panel panel-wide" id="panel-distress-national">
@@ -188,8 +271,12 @@
       <h2>What's next</h2>
       <p class="lede">This started as a one-day build at Campaign Lab, so there's a lot I still want to improve. Here's roughly what I'm working towards, in order:</p>
       <ol class="roadmap">
-        <li><strong>Interactive Document Querying & AI Assistant.</strong> An interactive way to custom-query council documents, meeting minutes, and primary reports to ask natural language questions about your area.</li>
-        <li><strong>Theme & Decision Momentum.</strong> Tracking what themes, policies, and committee decisions are gaining steam over time across councils (surging keywords, policy shifts, and voting trails).</li>
+        <li>✓ <strong>Interactive document search.</strong> Keyword and topic search of actual meeting minutes, with direct links to the original council PDFs and one-click citations.</li>
+        <li>✓ <strong>Topic &amp; decision momentum.</strong> Tracking which topics are gaining steam over time within council discussions (monthly share trends + surging/declining topics).</li>
+        <li>✓ <strong>Cross-council search.</strong> Search every council at once for an issue, policy or contractor, and see who is talking about it.</li>
+        <li>✓ <strong>Watchdog &amp; commercial receipts.</strong> Ombudsman fault rates, outstanding borrowing per resident, and the largest contract awards per council.</li>
+        <li><strong>Decision momentum.</strong> Follow specific committee decisions, voting trails, and policy shifts gaining traction across council business.</li>
+        <li><strong>Wales &amp; Scotland expansion.</strong> Expand to devolved authorities (requires separate finance return formats and data sources).</li>
       </ol>
       <p>I'd also genuinely value your take on any of these:</p>
       <ul class="feedback-wants">
@@ -251,12 +338,12 @@
 
   <footer class="receipt-footer">
     <p>*** thank you for scrutinising your council ***</p>
-    <p class="receipt-footer-sub">MHCLG · ONS · DfE · DESNZ · DfT · Council Gateway (Poteris) · Democracy Club</p>
+    <p class="receipt-footer-sub">MHCLG · ONS · DfE · Defra/OHID · DWP · Nomis · Council Gateway (Poteris) · Democracy Club · Local Government &amp; Social Care Ombudsman · Crown Commercial Service</p>
   </footer>
 
 </div>
 
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" defer></script>
-<script src="app.js?v=20260825e" defer></script>
+<script src="app.js?v=20261005a" defer></script>
 </body>
 </html>

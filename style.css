@@ -348,6 +348,9 @@ header .tagline em {
 .panel:nth-of-type(3) { animation-delay: 0.1s; }
 .panel:nth-of-type(4) { animation-delay: 0.15s; }
 .panel:nth-of-type(5) { animation-delay: 0.2s; }
+.panel:nth-of-type(6) { animation-delay: 0.25s; }
+.panel:nth-of-type(7) { animation-delay: 0.3s; }
+.panel:nth-of-type(8) { animation-delay: 0.35s; }
 
 .panel-wide { padding-left: 14px; padding-right: 14px; }
 .panel-wide h2, .panel-wide .caption, .panel-wide .key-line, .panel-wide .toggle-group { margin-left: 12px; margin-right: 12px; }
@@ -974,6 +977,178 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
   font-weight: 600;
 }
 
+/* ---------------------------------------------- momentum + doc search --- */
+#momentum-bar {
+  margin-top: 8px;
+  border-top: 1.5px dashed var(--rule);
+  padding-top: 8px;
+}
+
+.docsearch-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+#docsearch-input {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  padding: 8px 12px;
+  border: 1.5px solid var(--ink);
+  background: var(--receipt);
+  color: var(--ink);
+  border-radius: 0;
+}
+
+#docsearch-input::placeholder {
+  color: var(--faint);
+}
+
+#docsearch-input:focus-visible {
+  outline: 2px solid var(--stamp);
+  outline-offset: 1px;
+}
+
+.docsearch-clear-btn {
+  appearance: none;
+  border: 1.5px solid var(--ink);
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.docsearch-clear-btn:hover {
+  background: var(--ink);
+  color: var(--receipt);
+}
+
+.docsearch-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.docsearch-chip-label {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+  margin-right: 4px;
+}
+
+.docsearch-chip {
+  appearance: none;
+  border: 1.5px solid var(--rule);
+  background: var(--receipt);
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.docsearch-chip:hover {
+  border-color: var(--ink);
+  background: var(--paper);
+}
+
+.docsearch-chip em {
+  font-style: normal;
+  color: var(--faint);
+  margin-left: 2px;
+}
+
+.docsearch-stats {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+
+.docsearch-result {
+  padding: 12px 0;
+  border-bottom: 1.5px dashed var(--rule);
+}
+
+.docsearch-result:last-child {
+  border-bottom: none;
+}
+
+.docsearch-result-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.docsearch-result-date {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.docsearch-result-meeting {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--ink-soft);
+  flex: 1;
+}
+
+.docsearch-result-link {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--stamp);
+  text-decoration: none;
+  font-weight: 600;
+  border: 1px solid var(--stamp);
+  padding: 2px 8px;
+  transition: background 0.12s, color 0.12s;
+}
+
+.docsearch-result-link:hover {
+  background: var(--stamp);
+  color: var(--receipt);
+}
+
+.docsearch-result-snippet {
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 4px 0 6px;
+  max-width: 72ch;
+}
+
+.docsearch-result-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.docsearch-topic {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid;
+  padding: 1px 6px;
+  background: var(--receipt);
+}
+
 /* -------------------------------------------------------------- footer --- */
 .receipt-footer {
   text-align: center;
@@ -1082,4 +1257,252 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
   .form-row .form-group {
     min-width: 100%;
   }
+}
+
+/* ============================================================ v7 additions === */
+
+/* ---------------------------------------------------------- omnibox --- */
+.omnibox-wrap {
+  position: relative;
+  max-width: 720px;
+  margin: 0 auto 22px;
+  text-align: left;
+}
+
+.omnibox {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 0.92rem;
+  color: var(--ink);
+  background: var(--receipt);
+  border: 1.5px solid var(--ink);
+  padding: 13px 16px;
+  box-shadow: 4px 4px 0 rgba(38, 36, 32, 0.12);
+}
+.omnibox:focus { outline: 2px solid var(--stamp); outline-offset: 1px; }
+
+.omnibox-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  background: var(--receipt);
+  border: 1.5px solid var(--ink);
+  box-shadow: 5px 5px 0 rgba(38, 36, 32, 0.15);
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.omnibox-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 0.86rem;
+  border-bottom: 1px solid var(--rule);
+}
+.omnibox-item:last-child { border-bottom: none; }
+.omnibox-item:hover { background: var(--stamp-soft); }
+
+.omni-kind {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--stamp);
+  border: 1px solid var(--stamp);
+  padding: 1px 5px;
+  flex: 0 0 auto;
+}
+.omni-search .item-name { color: var(--ink-soft); }
+
+/* ------------------------------------------------------ section tabs --- */
+.section-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border: 1.5px solid var(--ink);
+  background: var(--receipt);
+  margin: 0 0 22px;
+  width: fit-content;
+}
+
+.section-tab {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 9px 15px;
+  border: none;
+  border-right: 1.5px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.section-tab:last-child { border-right: none; }
+.section-tab:hover { background: var(--stamp-soft); }
+.section-tab.active { background: var(--ink); color: var(--receipt); }
+
+.section-body { display: none; }
+.section-body.active { display: block; }
+
+/* ------------------------------------------------------ briefing card --- */
+.exec-briefing { margin-bottom: 22px; }
+
+.briefing-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.briefing-kicker {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--stamp);
+}
+.briefing-scope {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+
+.briefing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.brief-card {
+  background: var(--receipt);
+  border: 1.5px solid var(--ink);
+  padding: 14px 16px;
+  box-shadow: 4px 4px 0 rgba(38, 36, 32, 0.1);
+}
+.brief-card.brief-alert { border-color: var(--stamp); background: var(--stamp-soft); }
+.brief-card.brief-warn { border-color: var(--stamp); }
+
+.brief-label {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+.brief-value {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 1.35rem;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+.brief-sub {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+
+.brief-disconnect {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 12px 16px;
+  border: 1.5px dashed var(--rule);
+  background: rgba(253, 251, 244, 0.6);
+  font-family: var(--sans);
+  font-size: 0.9rem;
+}
+.brief-disconnect-tag {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--stamp);
+  border-bottom: 1.5px solid var(--stamp);
+  flex: 0 0 auto;
+}
+.brief-surge .brief-disconnect-tag { color: var(--ink); border-color: var(--ink); }
+
+/* -------------------------------------------------------- stat grid --- */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin: 12px 0 10px;
+}
+.stat-card {
+  background: var(--receipt);
+  border: 1.5px solid var(--ink);
+  padding: 14px 16px;
+}
+.stat-label {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+}
+.stat-value {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1.1;
+}
+.stat-sub {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  margin-top: 4px;
+}
+
+/* --------------------------------------------------- contracts table --- */
+.contracts-table { width: 100%; }
+.contracts-total {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  margin-top: 8px;
+}
+
+/* --------------------------------------------------------- mini btn --- */
+.mini-btn {
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border: 1.5px solid var(--ink);
+  background: var(--receipt);
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mini-btn:hover { background: var(--ink); color: var(--receipt); }
+
+.tier-toggle { margin: 4px 0 10px; }
+
+@media (max-width: 900px) {
+  .briefing-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .omnibox { font-size: 0.8rem; padding: 11px 12px; }
+  .section-tabs { width: 100%; }
+  .section-tab { flex: 1 1 auto; padding: 8px 8px; font-size: 0.62rem; text-align: center; }
+  .briefing-grid { grid-template-columns: 1fr; }
+  .stat-grid { grid-template-columns: 1fr 1fr; }
+  .brief-value { font-size: 1.15rem; }
+  .stat-value { font-size: 1.25rem; }
 }

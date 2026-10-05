@@ -116,6 +116,20 @@ function initTabs() {
   });
 }
 
+// in-council section tabs (Overview / Agenda / Money / Outcomes)
+function initSectionTabs() {
+  document.querySelectorAll(".section-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".section-tab").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".section-body").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      const body = document.querySelector(`.section-body[data-section-body="${btn.dataset.section}"]`);
+      if (body) body.classList.add("active");
+      window.dispatchEvent(new Event("resize"));
+    });
+  });
+}
+
 // ------------------------------------------------------- council view ---
 function initCouncilSelect() {
   const input = el("council-input");
@@ -230,14 +244,20 @@ function renderCouncil(name) {
 
   renderControlLine(c);
   renderElectionBanner(c);
+  renderBriefing(c);
   renderDistress(c);
   renderPopulation(c);
   renderAgeChart(c);
   renderTopicsChart(c, name);
   renderMoneyChart(c);
   renderTalkVsSpend(c);
+  renderBorrowing(c);
+  renderContracts(c);
+  renderOmbudsman(c);
   renderQoL(c);
   renderReadingLinks(c);
+  renderMomentum(c);
+  renderDocumentSearch(c);
   renderTaxonomyTable();
 }
 
@@ -255,6 +275,152 @@ function renderElectionBanner(c) {
   const box = el("election-banner");
   if (!c.election) { box.innerHTML = ""; return; }
   box.innerHTML = `<div class="election-banner">🗳 Upcoming election: <strong>${c.election.title}</strong> — polls open ${c.election.poll_date}</div>`;
+}
+
+// ---------------------------------------------------- executive briefing ---
+function fmtGbpM(n) {
+  if (n == null) return "—";
+  if (Math.abs(n) >= 1000) return "£" + (n / 1000).toFixed(2) + "bn";
+  return "£" + Math.round(n).toLocaleString("en-GB") + "m";
+}
+
+function renderBriefing(c) {
+  const b = c.briefing;
+  const box = el("exec-briefing");
+  if (!b || !box) return;
+
+  // Governance
+  const govValue = b.control || "—";
+  const govSub = b.control_changed && b.control_since
+    ? `changed in ${b.control_since}`
+    : (b.control_since ? `in control since ${b.control_since}` : "");
+
+  // Fiscal
+  const fiscalValue = b.is_s114 ? "Section 114" : (b.distress_status || "Stable");
+  const debtTxt = b.debt_per_resident != null ? `£${Math.round(b.debt_per_resident).toLocaleString("en-GB")} debt / resident` : "debt data unavailable";
+  const fiscalCls = b.is_s114 ? "brief-alert" : (b.distress_status && b.distress_status !== "Stable" ? "brief-warn" : "");
+
+  // Accountability
+  let acctValue = "—", acctSub = "no ombudsman data";
+  if (b.uphold_rate != null) {
+    acctValue = Math.round(b.uphold_rate) + "% upheld";
+    if (b.uphold_rate_peer != null) {
+      const diff = Math.round(b.uphold_rate - b.uphold_rate_peer);
+      acctSub = diff === 0 ? "in line with peers" : `${diff > 0 ? "+" : ""}${diff}pp vs peers`;
+    } else {
+      acctSub = "of investigated complaints";
+    }
+  }
+
+  // Disconnect
+  let disconnect = "";
+  if (b.gap) {
+    const g = b.gap;
+    const talkMore = g.gap_pp > 0;
+    disconnect = `<div class="brief-disconnect">
+      <span class="brief-disconnect-tag">The talk-vs-spend disconnect</span>
+      <span><strong>${g.topic}</strong> takes <strong>${g.spend_pct.toFixed(0)}%</strong> of the budget but just <strong>${g.discussion_pct.toFixed(0)}%</strong> of committee debate.</span>
+    </div>`;
+  }
+  if (b.surge) {
+    disconnect += `<div class="brief-disconnect brief-surge">
+      <span class="brief-disconnect-tag">Gaining steam</span>
+      <span><strong>${b.surge.topic}</strong> discussion is up <strong>+${b.surge.change_pp}pp</strong> in the most recent two months.</span>
+    </div>`;
+  }
+
+  box.innerHTML = `
+    <div class="briefing-head">
+      <span class="briefing-kicker">Executive briefing</span>
+      <span class="briefing-scope">${c.la_class_label || ""}${c.parent_county ? " · part of " + c.parent_county : ""}</span>
+    </div>
+    <div class="briefing-grid">
+      <div class="brief-card">
+        <div class="brief-label">Governance</div>
+        <div class="brief-value">${govValue}</div>
+        <div class="brief-sub">${govSub}</div>
+      </div>
+      <div class="brief-card ${fiscalCls}">
+        <div class="brief-label">Fiscal health</div>
+        <div class="brief-value">${fiscalValue}</div>
+        <div class="brief-sub">${debtTxt}</div>
+      </div>
+      <div class="brief-card">
+        <div class="brief-label">Accountability</div>
+        <div class="brief-value">${acctValue}</div>
+        <div class="brief-sub">${acctSub}</div>
+      </div>
+    </div>
+    ${disconnect}
+  `;
+}
+
+// -------------------------------------------------- borrowing & debt ---
+function medianPerResident() {
+  const vals = Object.values(DATA.councils)
+    .map((c) => (c.borrowing ? c.borrowing.per_resident : null))
+    .filter((v) => v != null);
+  vals.sort((a, b) => a - b);
+  return vals.length ? vals[Math.floor(vals.length / 2)] : null;
+}
+
+function renderBorrowing(c) {
+  const b = c.borrowing;
+  const panel = el("panel-borrowing");
+  showPanel("panel-borrowing", !!b);
+  if (!b) return;
+  const median = medianPerResident();
+  const cards = [
+    { label: "Total outstanding debt", value: fmtGbpM(b.total_gbp_m), sub: "all loan & securities categories" },
+    { label: "Debt per resident", value: b.per_resident != null ? "£" + Math.round(b.per_resident).toLocaleString("en-GB") : "—", sub: median != null ? `England median £${Math.round(median).toLocaleString("en-GB")}` : "" },
+  ];
+  el("borrowing-body").innerHTML = cards.map((card) => `
+    <div class="stat-card">
+      <div class="stat-label">${card.label}</div>
+      <div class="stat-value">${card.value}</div>
+      <div class="stat-sub">${card.sub}</div>
+    </div>`).join("");
+}
+
+// ---------------------------------------------------- top contracts ---
+function renderContracts(c) {
+  const rows = c.contracts;
+  showPanel("panel-contracts", !!(rows && rows.length));
+  if (!rows || !rows.length) return;
+  const total = rows.reduce((s, r) => s + (r.value_gbp || 0), 0);
+  const body = rows.map((r) => `
+    <tr>
+      <td>${r.supplier}</td>
+      <td class="num-cell">${fmtGbpM((r.value_gbp || 0) / 1_000_000)}</td>
+      <td class="num-cell">${r.n}</td>
+      <td class="num-cell">${r.latest ? r.latest.replace(/-/g, "/") : "—"}</td>
+    </tr>`).join("");
+  el("contracts-body").innerHTML = `
+    <table class="league contracts-table">
+      <thead><tr><th>Supplier</th><th class="num-th">Awarded value</th><th class="num-th">Contracts</th><th class="num-th">Latest</th></tr></thead>
+      <tbody>${body}</tbody>
+    </table>
+    <p class="contracts-total">Combined value of the largest awards shown: <strong>${fmtGbpM(total / 1_000_000)}</strong></p>`;
+}
+
+// ------------------------------------------------- ombudsman watchdog ---
+function renderOmbudsman(c) {
+  const o = c.ombudsman;
+  showPanel("panel-ombudsman", !!o);
+  if (!o) return;
+  const rateSub = o.uphold_rate_peer != null ? `peer average ${Math.round(o.uphold_rate_peer)}%` : "of investigated complaints";
+  const cards = [
+    { label: "Upheld rate", value: o.uphold_rate != null ? Math.round(o.uphold_rate) + "%" : "—", sub: rateSub },
+    { label: "Complaints decided", value: o.complaints_total != null ? Math.round(o.complaints_total) : "—", sub: "enquiries & complaints" },
+    { label: "Cases upheld", value: o.upheld != null ? Math.round(o.upheld) : "—", sub: "found at fault" },
+    { label: "Recommendations met", value: o.compliance_rate != null ? Math.round(o.compliance_rate) + "%" : "—", sub: "implemented to LGO satisfaction" },
+  ];
+  el("ombudsman-body").innerHTML = cards.map((card) => `
+    <div class="stat-card">
+      <div class="stat-label">${card.label}</div>
+      <div class="stat-value">${card.value}</div>
+      <div class="stat-sub">${card.sub}</div>
+    </div>`).join("");
 }
 
 function renderPopulation(c) {
@@ -744,6 +910,287 @@ function renderReadingLinks(c) {
     .join("");
 }
 
+// ---------------------------------------------------- topic momentum ---
+function renderMomentum(c) {
+  const m = c.momentum;
+  const hasData = m && m.months && m.months.length && m.changes && m.changes.length;
+  showPanel("panel-momentum", !!hasData);
+  if (!hasData) return;
+
+  // Legend: top 4 by |change| + rest collapsed into grey
+  const months = m.months;
+  const short = months.map((mm) => {
+    const [y, mo] = mm.split("-");
+    const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return names[parseInt(mo, 10) - 1] + " " + y.slice(2);
+  });
+
+  const byChange = m.changes.slice(); // sorted by |change| desc
+  const topTopics = byChange.slice(0, 4).map((ch) => ch.topic);
+
+  // Multi-line chart: top movers coloured, everything else pane-invisible grey
+  const traces = [];
+  m.changes.forEach((ch) => {
+    const t = ch.topic;
+    const vals = m.series[t] || [];
+    const isTop = topTopics.includes(t);
+    traces.push({
+      x: short, y: vals, type: "scatter", mode: "lines+markers",
+      line: { width: isTop ? 2.5 : 1.2, color: isTop ? DATA.topic_colors[t] || ACCENT : GREY },
+      marker: { size: isTop ? 4 : 0, color: isTop ? DATA.topic_colors[t] || ACCENT : GREY },
+      name: t, hovertemplate: `${t}<br>%{x}: %{y}%<extra></extra>`,
+      showlegend: false, hoverinfo: "skip",
+    });
+  });
+
+  Plotly.newPlot(
+    "momentum-chart", traces,
+    {
+      showlegend: false, hovermode: "x unified",
+      margin: { l: 42, r: 18, t: 10, b: 40 },
+      height: 340,
+      xaxis: { title: "", tickangle: -20 },
+      yaxis: { title: "Share of discussion (%)", ticksuffix: "%", zeroline: false },
+      font: { ...BASE_FONT, size: isMobile() ? 10.5 : 12 },
+      template: "simple_white",
+    },
+    PLOTLY_CONFIG
+  );
+
+  // Bars: recent 2-month avg vs prior 2-month avg, sorted by |change|
+  const rows = byChange.filter((ch) => Math.abs(ch.change_pp) > 0.3).slice(0, 6);
+  if (rows.length === 0) {
+    el("momentum-key").innerHTML = "";
+    el("momentum-bar").innerHTML = `<p class="empty-note">No meaningful topic shifts in this window — discussion shares stayed fairly steady.</p>`;
+    return;
+  }
+
+  el("momentum-key").innerHTML =
+    swatch(ACCENT, "Last 2 months avg") + " &nbsp; " + swatch(GREY, "Previous 2 months avg");
+
+  const labels = rows.map((r) => r.topic);
+  const recentVals = rows.map((r) => r.recent_avg);
+  const priorVals = rows.map((r) => r.prior_avg);
+  const colors = rows.map((r) => (r.recent_avg >= r.prior_avg ? SPEND_COLOR : GREY));
+
+  Plotly.newPlot(
+    "momentum-bar",
+    [
+      withClip({ x: priorVals.slice().reverse(), y: labels.slice().reverse(), type: "bar", orientation: "h", marker: { color: GREY }, text: priorVals.slice().reverse().map((v) => (v ? v.toFixed(0) + "%" : "0")), textposition: "outside", hoverinfo: "skip" }),
+      withClip({ x: recentVals.slice().reverse(), y: labels.slice().reverse(), type: "bar", orientation: "h", marker: { color: ACCENT }, text: recentVals.slice().reverse().map((v) => (v ? v.toFixed(0) + "%" : "0")), textposition: "outside", hoverinfo: "skip" }),
+    ],
+    {
+      barmode: "group", showlegend: false,
+      margin: { l: isMobile() ? 115 : 160, r: 35, t: 10, b: 25 },
+      height: chartHeight(labels.length, isMobile() ? 34 : 40),
+      font: { ...BASE_FONT, size: isMobile() ? 10.5 : 12 },
+      xaxis: { title: "", ticksuffix: "%", zeroline: false, range: headroomRange([...priorVals, ...recentVals]) },
+      yaxis: { title: "" },
+      template: "simple_white",
+    },
+    PLOTLY_CONFIG
+  );
+}
+
+// ---------------------------------------------------- document search ---
+let docSearchCache = null;      // per-council raw doc list (compact format)
+let docSearchCouncil = null;
+let docSearchIndex = null;      // mini inverted index: token -> Set(docIdx)
+
+// Compact search index field names: d=date, m=meeting, s=snippet, u=pdf_url, t=topics[]
+const STOPWORDS = new Set([
+  "the", "and", "for", "that", "this", "with", "was", "were", "are", "not", "but",
+  "from", "has", "have", "had", "will", "would", "can", "could", "should", "may",
+  "been", "being", "into", "over", "under", "also", "than", "then", "there", "their",
+  "they", "them", "she", "he", "it", "its", "on", "at", "in", "is", "to", "of", "a",
+]);
+
+function buildDocIndex(docs) {
+  const idx = new Map();
+  docs.forEach((d, di) => {
+    const text = ((d.m || "") + " " + (d.s || "") + " " + (d.t || []).join(" ")).toLowerCase();
+    const toks = text.match(/[a-z]+/g) || [];
+    toks.forEach((tk) => {
+      if (tk.length < 2 || STOPWORDS.has(tk)) return;
+      if (!idx.has(tk)) idx.set(tk, new Set());
+      idx.get(tk).add(di);
+    });
+  });
+  return idx;
+}
+
+function docSearchLoad(c) {
+  docSearchCouncil = c;
+  docSearchCache = null;
+  docSearchIndex = null;
+  el("docsearch-results").innerHTML = `<p class="empty-note">Loading documents…</p>`;
+  el("docsearch-stats").textContent = "";
+  // Search index file named by the council's ONS code
+  fetch(`search_index/${c.ons_code}.json`)
+    .then((r) => r.json())
+    .then((docs) => {
+      docSearchCache = docs;
+      docSearchIndex = buildDocIndex(docs);
+      renderDocSearchResults();
+    })
+    .catch(() => {
+      el("docsearch-results").innerHTML = `<p class="empty-note">No document index for this council.</p>`;
+      el("docsearch-stats").textContent = "";
+    });
+}
+
+function docSearchActiveTopics(docs) {
+  const counts = {};
+  docs.forEach((d) => {
+    (d.t || []).forEach((t) => { counts[t] = (counts[t] || 0) + 1; });
+  });
+  return counts;
+}
+
+function renderDocumentSearch(c) {
+  const hasData = !!c.ons_code;
+  showPanel("panel-docsearch", hasData);
+  if (!hasData) return;
+
+  // Wire input + topic chips once
+  const input = el("docsearch-input");
+  const clearBtn = el("docsearch-clear");
+  if (!input.dataset.wired) {
+    input.dataset.wired = "1";
+    input.addEventListener("input", () => renderDocSearchResults());
+    input.addEventListener("keydown", (e) => { if (e.key === "Enter") renderDocSearchResults(); });
+    clearBtn.addEventListener("click", () => { input.value = ""; renderDocSearchResults(); });
+  }
+
+  // Reload only when council changes (lazy-once per council)
+  if (docSearchCouncil !== c) {
+    docSearchLoad(c);
+  } else {
+    renderDocSearchResults();
+  }
+}
+
+function renderDocSearchResults() {
+  const c = docSearchCouncil;
+  if (!docSearchCache) return;
+  const docs = docSearchCache;
+  const q = (el("docsearch-input").value || "").trim().toLowerCase();
+
+  // Topic chip row (built from the council's doc index; shows doc counts)
+  const topicChips = el("docsearch-topics");
+  const counts = docSearchActiveTopics(docs);
+  const chips = Object.keys(DATA.topic_colors || {}).map((t) => {
+    const n = counts[t] || 0;
+    return `<button type="button" class="docsearch-chip" data-topic="${t}" data-count="${n}">
+      <span class="key-swatch" style="background:${DATA.topic_colors[t] || GREY}"></span>${t} <em>${n}</em>
+    </button>`;
+  }).join("");
+  if (!topicChips.dataset.built || topicChips.dataset.council !== c.ons_code) {
+    topicChips.dataset.built = "1";
+    topicChips.dataset.council = c.ons_code;
+    topicChips.innerHTML = `<span class="docsearch-chip-label">Filter by topic:</span>` + chips;
+    topicChips.querySelectorAll(".docsearch-chip").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const t = btn.dataset.topic;
+        const iv = el("docsearch-input");
+        // Toggle: clicking again removes the topic filter
+        const tokens = (iv.value || "").split(/\s+/).filter(Boolean);
+        const tk = "@" + t.toLowerCase();
+        if (tokens.includes(tk)) {
+          iv.value = tokens.filter((x) => x !== tk).join(" ");
+        } else {
+          iv.value = tokens.filter((x) => !x.startsWith("@")).concat(tk).join(" ");
+        }
+        renderDocSearchResults();
+      });
+    });
+  }
+
+  // Search: split into tokens; @topic = topic filter, plain token = substring match
+  const tokens = q.split(/\s+/).filter(Boolean);
+  const topicFilter = tokens.filter((t) => t.startsWith("@")).map((t) => t.slice(1));
+  const textTokens = tokens.filter((t) => !t.startsWith("@"));
+
+  let results = docs;
+  if (textTokens.length) {
+    const sets = textTokens.map((tk) => {
+      const hit = new Set();
+      docSearchIndex.forEach((s) => { if (tk.test) ; });
+      // Simple char-search on the combined index is too slow; use token index
+      const key = tk;
+      const tokenSet = docSearchIndex.get(key);
+      return tokenSet || new Set();
+    });
+    if (sets.length) {
+      let combined = new Set(sets[0]);
+      for (let i = 1; i < sets.length; i++) {
+        const next = new Set();
+        combined.forEach((v) => { if (sets[i].has(v)) next.add(v); });
+        combined = next;
+      }
+      results = combined.size ? [...combined].sort((a, b) => a - b).map((i) => docs[i]) : [];
+    }
+  }
+
+  // Apply topic filter (OR across topics) — topics is now an array
+  if (topicFilter.length) {
+    results = results.filter((d) => topicFilter.some((t) => (d.t || []).includes(t)));
+  }
+
+  // Sort newest first (dates are ISO strings)
+  results.sort((a, b) => (a.d < b.d ? 1 : -1));
+
+  const shown = results.slice(0, 200);
+  const total = results.length;
+
+  el("docsearch-stats").innerHTML = total
+    ? `${total} document${total === 1 ? "" : "s"} matched`
+    : "No documents matched.";
+
+  const wrap = el("docsearch-results");
+  if (!shown.length) {
+    wrap.innerHTML = `<p class="empty-note">No documents found — try a broader keyword, or a topic chip above.</p>`;
+    return;
+  }
+
+  const rows = shown.map((d) => {
+    const topicTags = (d.t || []).map((t) =>
+      `<span class="docsearch-topic" style="border-color:${DATA.topic_colors[t] || GREY};color:${DATA.topic_colors[t] || ACCENT}">${t}</span>`
+    ).join(" ");
+    const meeting = (d.m || "").split(" - ")[0];
+    const dateFmt = d.d ? d.d.replace(/-/g, "/") : "";
+    return `
+      <div class="docsearch-result">
+        <div class="docsearch-result-head">
+          <span class="docsearch-result-date">📄 ${dateFmt}</span>
+          <span class="docsearch-result-meeting">${meeting}</span>
+          <a class="docsearch-result-link" href="${d.u}" target="_blank" rel="noopener">Open PDF ⤴</a>
+          <button type="button" class="mini-btn docsearch-cite" data-cite="${citationFor(c, meeting, d.d, d.u).replace(/"/g, "&quot;")}">Copy citation</button>
+        </div>
+        <p class="docsearch-result-snippet">${d.s || "(no snippet)"}</p>
+        <div class="docsearch-result-topics">${topicTags}</div>
+      </div>`;
+  }).join("");
+
+  wrap.innerHTML = rows;
+  wrap.querySelectorAll(".docsearch-cite").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const txt = btn.dataset.cite;
+      navigator.clipboard && navigator.clipboard.writeText(txt);
+      const old = btn.textContent;
+      btn.textContent = "Copied ✓";
+      setTimeout(() => { btn.textContent = old; }, 1500);
+    });
+  });
+}
+
+function citationFor(council, meeting, date, url) {
+  const nm = currentCouncilName || (council && council.name) || "Council";
+  const dt = date ? date : "n.d.";
+  const mtg = meeting ? meeting : "Meeting";
+  return `${nm} Council, ${mtg}, ${dt}. ${url}`;
+}
+
 function renderTaxonomyTable() {
   const table = el("taxonomy-table");
   if (!DATA.taxonomy_examples || table.dataset.built) return;
@@ -755,10 +1202,45 @@ function renderTaxonomyTable() {
 }
 
 // ------------------------------------------------------- national view ---
+let partyTier = "single";
+
+function currentPartyGroups(metric) {
+  if (partyTier === "all") {
+    return metric === "spend" ? DATA.party_groups_spend : DATA.party_groups_discussion;
+  }
+  const t = DATA.party_by_tier && DATA.party_by_tier[partyTier];
+  if (!t) return [];
+  return metric === "spend" ? t.spend : t.discussion;
+}
+
+function redrawPartyCharts() {
+  renderPartyChart("party-chart", "party-key", currentPartyGroups("spend"), "spend_share");
+  renderPartyChart("party-discussion-chart", "party-discussion-key", currentPartyGroups("discussion"), "discussion_share");
+  const labels = {
+    single: "single-tier authorities — unitaries, mets and London boroughs, which run all services",
+    district: "shire districts — lower-tier councils that do not run social care or education",
+    county: "shire counties — upper-tier councils that run social care, education and highways",
+    all: "all 282 English authorities",
+  };
+  const cap = el("party-caption");
+  if (cap) cap.textContent = `Equal-weighted mean spend share across ${labels[partyTier]}. n = number of councils in each party group. Source: MHCLG Revenue Outturn 2024-25 · control from Open Council Data UK (2026).`;
+}
+
 function renderNational() {
   renderDistressWatchlist();
-  renderPartyChart("party-chart", "party-key", DATA.party_groups_spend, "spend_share");
-  renderPartyChart("party-discussion-chart", "party-discussion-key", DATA.party_groups_discussion, "discussion_share");
+  const toggle = el("party-tier-toggle");
+  if (toggle && !toggle.dataset.wired) {
+    toggle.dataset.wired = "1";
+    toggle.querySelectorAll(".toggle-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        partyTier = btn.dataset.tier;
+        toggle.querySelectorAll(".toggle-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        redrawPartyCharts();
+      });
+    });
+  }
+  redrawPartyCharts();
   renderLeagueTable();
 }
 
@@ -1030,9 +1512,160 @@ function initFeedbackForm() {
   });
 }
 
+// ---------------------------------------------------------- omnibox ---
+let globalIndex = null;
+let globalIndexPromise = null;
+
+function loadGlobalIndex() {
+  if (globalIndexPromise) return globalIndexPromise;
+  globalIndexPromise = fetch("search_index_global.json?v=20261005a")
+    .then((r) => r.json())
+    .then((d) => { globalIndex = d; return d; })
+    .catch(() => { globalIndex = {}; return {}; });
+  return globalIndexPromise;
+}
+
+function globalTokens(q) {
+  return (q.toLowerCase().match(/[a-z]{4,}/g) || []).filter((t) => !STOPWORDS.has(t));
+}
+
+function initOmnibox() {
+  const input = el("omnibox");
+  const menu = el("omnibox-menu");
+  if (!input || !menu) return;
+  const names = Object.keys(DATA.councils).sort();
+
+  function close() { menu.style.display = "none"; }
+  function render() {
+    const q = input.value.trim();
+    if (!q) { close(); return; }
+    const ql = q.toLowerCase();
+    const councilHits = names.filter((n) => n.toLowerCase().includes(ql)).slice(0, 6);
+    let html = "";
+    councilHits.forEach((n) => {
+      const c = DATA.councils[n];
+      html += `<div class="omnibox-item" data-council="${n}"><span class="omni-kind">Council</span><span class="item-name">${n}</span>${c.party ? `<span class="menu-party">${c.party}</span>` : ""}</div>`;
+    });
+    html += `<div class="omnibox-item omni-search" data-query="${q.replace(/"/g, "&quot;")}"><span class="omni-kind">Search</span><span>Search all councils for &ldquo;${q}&rdquo;</span></div>`;
+    menu.innerHTML = html;
+    menu.style.display = "block";
+    menu.querySelectorAll(".omnibox-item").forEach((item) => {
+      item.addEventListener("click", () => {
+        if (item.dataset.council) {
+          const nm = item.dataset.council;
+          input.value = nm;
+          close();
+          const b = document.querySelector('.tab[data-tab="council"]');
+          if (b) b.click();
+          renderCouncil(nm);
+        } else {
+          close();
+          openGlobalSearch(item.dataset.query);
+        }
+      });
+    });
+  }
+  input.addEventListener("input", render);
+  input.addEventListener("focus", render);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const q = input.value.trim();
+      if (!q) return;
+      const exact = names.find((n) => n.toLowerCase() === q.toLowerCase());
+      close();
+      if (exact) {
+        const b = document.querySelector('.tab[data-tab="council"]');
+        if (b) b.click();
+        renderCouncil(exact);
+      } else {
+        openGlobalSearch(q);
+      }
+    } else if (e.key === "Escape") {
+      close();
+    }
+  });
+  document.addEventListener("click", (e) => { if (!e.target.closest(".omnibox-wrap")) close(); });
+}
+
+function openGlobalSearch(q) {
+  const b = document.querySelector('.tab[data-tab="national"]');
+  if (b) b.click();
+  el("panel-global-search").style.display = "";
+  el("global-search-heading").textContent = `Cross-council search: “${q}”`;
+  el("global-search-lede").textContent = "Councils whose published meeting documents mention every word you searched for, ranked by how many documents match.";
+  el("global-search-results").innerHTML = `<p class="empty-note">Searching…</p>`;
+  const toks = globalTokens(q);
+  if (!toks.length) {
+    el("global-search-results").innerHTML = `<p class="empty-note">Type at least one word of four or more letters.</p>`;
+    return;
+  }
+  loadGlobalIndex().then((idx) => {
+    let councils = null;
+    toks.forEach((tk) => {
+      const entries = idx[tk] || [];
+      const m = new Map(entries);
+      if (councils === null) {
+        councils = m;
+      } else {
+        const next = new Map();
+        councils.forEach((v, k) => { if (m.has(k)) next.set(k, v + m.get(k)); });
+        councils = next;
+      }
+    });
+    renderGlobalResults(q, councils, toks);
+  });
+}
+
+function renderGlobalResults(q, councils, toks) {
+  const wrap = el("global-search-results");
+  const missing = toks.filter((tk) => !globalIndex || !globalIndex[tk]);
+  if (!councils || !councils.size) {
+    wrap.innerHTML = `<p class="empty-note">No council documents matched ${missing.length ? "all of these terms" : "your search"}. Try fewer or broader words.</p>`;
+    return;
+  }
+  const rows = [...councils.entries()]
+    .map(([ons, n]) => {
+      const c = Object.values(DATA.councils).find((x) => x.ons_code === ons);
+      return { ons, n, name: c ? c.name : ons, party: c ? c.party : null };
+    })
+    .sort((a, b) => b.n - a.n)
+    .slice(0, 20);
+
+  const body = rows.map((r, i) => `
+    <tr>
+      <td class="rank-cell">${i + 1}</td>
+      <td class="council-cell"><a class="council-link" href="?council=${encodeURIComponent(r.name)}">${r.name}</a></td>
+      <td>${r.party || "—"}</td>
+      <td class="num-cell">${r.n}</td>
+      <td><button class="mini-btn" data-open-council="${r.name}">Open dossier</button></td>
+    </tr>`).join("");
+
+  const note = missing.length
+    ? `<p class="empty-note">No documents matched: ${missing.map((m) => `“${m}”`).join(", ")}. Showing councils matching the rest.</p>`
+    : "";
+
+  wrap.innerHTML = `${note}
+    <div style="overflow-x:auto"><table class="league">
+      <thead><tr><th class="rank-cell">#</th><th>Council</th><th>Control</th><th class="num-th">Matching docs</th><th></th></tr></thead>
+      <tbody>${body}</tbody>
+    </table></div>
+    <p class="caption">Based on the most recent 500 classified documents per council. Open a dossier to search its full text.</p>`;
+
+  wrap.querySelectorAll("[data-open-council]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const nm = btn.dataset.openCouncil;
+      const b = document.querySelector('.tab[data-tab="council"]');
+      if (b) b.click();
+      renderCouncil(nm);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  });
+}
+
 // -------------------------------------------------------------- init ---
 window.addEventListener("DOMContentLoaded", () => {
   initTabs();
+  initSectionTabs();
   initFeedbackForm();
 
   // Instant navigation when clicking any council link in tables
@@ -1056,11 +1689,12 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20260825e")
+  fetch("data.json?v=20261005a")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
       initCouncilSelect();
+      initOmnibox();
       renderNational();
       const tabParam = new URLSearchParams(location.search).get("tab");
       const tabBtn = tabParam && document.querySelector(`.tab[data-tab="${tabParam}"]`);
@@ -1084,10 +1718,10 @@ window.addEventListener("resize", () => {
       renderTopicsChart(c, currentCouncilName);
       renderMoneyChart(c);
       renderTalkVsSpend(c);
+      renderMomentum(c);
     }
     if (DATA) {
-      renderPartyChart("party-chart", "party-key", DATA.party_groups_spend, "spend_share");
-      renderPartyChart("party-discussion-chart", "party-discussion-key", DATA.party_groups_discussion, "discussion_share");
+      redrawPartyCharts();
     }
   }, 150);
 });
