@@ -1544,3 +1544,116 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
   .standout-badge { font-size: 0.66rem; padding: 4px 8px; }
   .ai-btn { font-size: 0.68rem; padding: 7px 10px; }
 }
+
+/* --------------------------------------------------- provenance pills --- */
+.prov {
+  display: inline-block; vertical-align: middle;
+  font-family: var(--mono); font-size: 0.56rem; font-weight: 600;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 2px 7px; margin-left: 8px; border-radius: 999px;
+  border: 1px solid var(--rule); color: var(--ink-soft); background: var(--receipt);
+  white-space: nowrap;
+}
+.prov-official { border-color: #6b8f4e; color: #41632a; background: #f2f8ec; }
+.prov-direct { border-color: #6f86a8; color: #33496b; background: #eef3fa; }
+.prov-algo { border-color: #c99a2e; color: #7a5c12; background: #fdf7e8; }
+.prov-derived { border-color: #a58bbf; color: #5c3f78; background: #f6f0fa; }
+
+.rubric-link {
+  appearance: none; background: none; border: none; cursor: pointer;
+  font-family: var(--mono); font-size: 0.68rem; color: var(--stamp);
+  text-decoration: underline; text-underline-offset: 3px; padding: 2px 0; margin: 2px 0 4px;
+}
+.rubric-link:hover { color: var(--ink); }
+
+.how-made-btn {
+  appearance: none; margin-top: 10px; cursor: pointer;
+  font-family: var(--mono); font-size: 0.68rem;
+  background: none; border: 1px solid var(--rule); color: var(--ink-soft);
+  padding: 6px 12px; border-radius: 2px;
+}
+.how-made-btn:hover { border-color: var(--ink); color: var(--ink); background: var(--receipt); }
+
+/* the standout pills invite a click */
+.standout-badge[data-rubric] { cursor: pointer; }
+.standout-badge[data-rubric]:hover { border-color: var(--ink); }
+
+/* ------------------------------------------------ postcode result rows --- */
+.pc-result { border-bottom: 1px solid var(--rule); background: #fbf6ea; }
+.pc-head {
+  font-family: var(--mono); font-size: 0.6rem; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--stamp);
+  padding: 7px 14px 3px;
+}
+.pc-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 14px; cursor: pointer; font-family: var(--sans); font-size: 0.86rem;
+  border-top: 1px solid var(--rule);
+}
+.pc-item:hover { background: var(--stamp-soft); }
+.pc-item .item-name { font-weight: 600; }
+.pc-ward {
+  margin-left: auto; font-family: var(--mono); font-size: 0.62rem;
+  color: var(--faint); text-align: right;
+}
+.pc-loading, .pc-none {
+  font-family: var(--mono); font-size: 0.68rem; color: var(--faint);
+  padding: 9px 14px;
+}
+
+/* ------------------------------------------------------------- modals --- */
+body.modal-open { overflow: hidden; }
+.modal {
+  display: none; position: fixed; inset: 0; z-index: 1000;
+  background: rgba(38, 36, 32, 0.55); padding: 5vh 16px;
+  overflow-y: auto;
+}
+.modal.open { display: block; }
+.modal-card {
+  position: relative; max-width: 640px; margin: 0 auto;
+  background: var(--receipt); border: 1.5px solid var(--ink);
+  box-shadow: 8px 8px 0 rgba(38, 36, 32, 0.2);
+  padding: 28px 30px 24px;
+}
+.modal-card-wide { max-width: 780px; }
+.modal-card h3 {
+  font-family: var(--serif); font-size: 1.5rem; font-weight: 600;
+  margin: 0 0 10px; padding-right: 30px;
+}
+.modal-card h4 {
+  font-family: var(--mono); font-size: 0.72rem; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--stamp);
+  margin: 20px 0 8px;
+}
+.modal-close {
+  position: absolute; top: 10px; right: 12px; appearance: none;
+  background: none; border: none; font-size: 1.5rem; line-height: 1;
+  color: var(--ink-soft); cursor: pointer; padding: 4px 8px;
+}
+.modal-close:hover { color: var(--stamp); }
+.modal-lede { color: var(--ink-soft); font-size: 0.92rem; margin: 0 0 6px; }
+.modal-foot { font-size: 0.82rem; color: var(--ink-soft); margin-top: 16px; }
+.modal a { color: var(--stamp); }
+
+.rubric-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.82rem; }
+.rubric-table th, .rubric-table td {
+  text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--rule); vertical-align: top;
+}
+.rubric-table th {
+  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--ink-soft);
+}
+.rubric-table td:first-child { white-space: nowrap; }
+
+.prov-legend, .caveat-list { margin: 0; padding-left: 0; list-style: none; }
+.prov-legend li, .caveat-list li {
+  font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 10px; line-height: 1.5;
+}
+.caveat-list { list-style: disc; padding-left: 20px; }
+.caveat-list li strong { color: var(--ink); }
+
+@media (max-width: 640px) {
+  .modal-card { padding: 22px 18px 18px; }
+  .rubric-table { font-size: 0.74rem; }
+  .pc-ward { display: none; }
+}

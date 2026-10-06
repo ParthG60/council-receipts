@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261005b">
+<link rel="stylesheet" href="style.css?v=20261006a">
 </head>
 <body>
 <div class="container">
@@ -18,7 +18,7 @@
     <p class="tagline">What your council talks about, and where the money goes. <em>Show me the receipts.</em></p>
 
     <div class="omnibox-wrap">
-      <input type="text" id="omnibox" class="omnibox" placeholder="Search a council, an issue, or a contractor (e.g. Sheffield, temporary accommodation, RAAC, Capita)…" autocomplete="off" aria-label="Search councils, issues and contractors">
+      <input type="text" id="omnibox" class="omnibox" placeholder="Search a council, postcode, issue or contractor (e.g. Sheffield, SW1A 1AA, RAAC, Capita)…" autocomplete="off" aria-label="Search councils, postcodes, issues and contractors">
       <div id="omnibox-menu" class="omnibox-menu" style="display:none;"></div>
     </div>
 
@@ -35,7 +35,7 @@
 
     <div class="council-picker">
       <div class="combobox-wrap">
-        <input type="text" id="council-input" placeholder="Search or select a council (e.g. Manchester, Camden)…" autocomplete="off" aria-label="Search or select a council">
+        <input type="text" id="council-input" placeholder="Search a council or enter your postcode (e.g. Manchester, SW1A 1AA)…" autocomplete="off" aria-label="Search or select a council, or enter a postcode">
         <button type="button" id="combobox-toggle" class="combobox-toggle-btn" aria-label="Open council list">▼</button>
         <div id="combobox-menu" class="combobox-menu" style="display:none;"></div>
       </div>
@@ -47,6 +47,7 @@
       <div id="election-banner"></div>
       <div id="control-line" class="control-line"></div>
       <div id="standout-badges" class="standout-badges"></div>
+      <button type="button" id="rubric-btn" class="rubric-link">What do these flags mean?</button>
       <div class="council-actions">
         <button type="button" id="copy-briefing-btn" class="ai-btn">✦ Copy citizen briefing for your AI</button>
         <a class="ai-btn ghost" id="forensic-link" href="housing-crime/index.html">🔍 Open the Housing &amp; Crime terminal</a>
@@ -57,7 +58,7 @@
 
       <div class="grid-2">
         <section class="panel" id="panel-population">
-          <h2>Population</h2>
+          <h2>Population <span class="prov prov-official" title="ONS mid-2024 population estimates">Official · ONS</span></h2>
           <div class="big-number" id="population-headline"></div>
           <p class="caption">Source: ONS mid-2024 population estimates.</p>
           <div class="key-line" id="race-key"></div>
@@ -66,7 +67,7 @@
         </section>
 
         <section class="panel" id="panel-age">
-          <h2 id="age-heading">Age profile vs England</h2>
+          <h2 id="age-heading">Age profile vs England <span class="prov prov-official" title="ONS mid-2024 population estimates">Official · ONS</span></h2>
           <div class="key-line" id="age-key"></div>
           <div id="age-chart"></div>
           <p class="caption">Source: ONS mid-2024 population estimates.</p>
@@ -74,14 +75,14 @@
       </div>
 
       <section class="panel" id="panel-topics">
-        <h2>What they talk about</h2>
+        <h2>What they talk about <span class="prov prov-algo" title="Keyword classification of meeting minutes from the Council Gateway API">Algorithmic · Gateway minutes</span></h2>
         <div class="key-line" id="topics-key"></div>
         <div id="topics-chart"></div>
         <p class="caption" id="topics-caption">Source: Council Gateway API meeting minutes, FY2024-25 (Oct 2024–Mar 2025, matched to the spend year below). Share of all topic keyword hits.</p>
       </section>
 
       <section class="panel" id="panel-money">
-        <h2>Where the budget goes</h2>
+        <h2>Where the budget goes <span class="prov prov-official" title="MHCLG Revenue Outturn 2024-25">Official · MHCLG</span></h2>
         <p class="lede" id="money-lede">£ per resident going into each service (staff plus running costs).</p>
         <div class="toggle-group" id="money-toggle">
           <button class="toggle-btn active" data-view="absolute">£ per resident</button>
@@ -93,40 +94,40 @@
       </section>
 
       <section class="panel" id="panel-tvs">
-        <h2>Do they talk about what they spend on?</h2>
+        <h2>Do they talk about what they spend on? <span class="prov prov-derived" title="Compares two official datasets by topic mapping">Derived</span></h2>
         <div class="key-line" id="tvs-key"></div>
         <div id="tvs-chart"></div>
         <p class="caption" id="tvs-caption"></p>
       </section>
 
       <section class="panel" id="panel-borrowing">
-        <h2>Borrowing &amp; debt</h2>
+        <h2>Borrowing &amp; debt <span class="prov prov-official" title="MHCLG Quarterly Borrowing & Investment Live Table">Official · MHCLG</span></h2>
         <p class="lede">Outstanding borrowing owed by the council — a lead indicator of financial stress.</p>
         <div id="borrowing-body" class="stat-grid"></div>
         <p class="caption">Source: MHCLG Quarterly Borrowing &amp; Investment Live Table (latest quarter). Total outstanding borrowing across all loan and securities categories. Per-resident uses ONS mid-2024 population.</p>
       </section>
 
       <section class="panel" id="panel-contracts">
-        <h2>Who gets the money: largest contract awards</h2>
+        <h2>Who gets the money: largest contract awards <span class="prov prov-direct" title="Crown Commercial Service Contracts Finder (awarded contracts)">Direct record · Contracts Finder</span></h2>
         <p class="lede">The biggest single-supplier contracts this council has published to Contracts Finder.</p>
         <div id="contracts-body"></div>
         <p class="caption">Source: Crown Commercial Service Contracts Finder (awarded contracts). Values are the published award values and may reflect framework ceilings; multi-supplier framework lots are excluded.</p>
       </section>
 
       <section class="panel" id="panel-distress">
-        <h2>Financial health &amp; distress check</h2>
+        <h2>Financial health &amp; distress check <span class="prov prov-official" title="MHCLG Section 114 & Exceptional Financial Support registers">Official · MHCLG</span></h2>
         <div id="distress-status-box"></div>
         <p class="caption" id="distress-caption">Source: MHCLG Section 114 statutory notices &amp; Exceptional Financial Support (EFS) capitalisation records (2024–2026).</p>
       </section>
 
       <section class="panel" id="panel-qol">
-        <h2>Quality of life indicators</h2>
+        <h2>Quality of life indicators <span class="prov prov-official" title="ONS, DfE, Defra/OHID, DWP and Nomis official statistics">Official · ONS / DfE / DWP</span></h2>
         <div id="qol-grid" class="qol-grid"></div>
         <p class="caption">Sources: ONS Health State Life Expectancies (2025) · DfE GCSE Attainment 8 (2023/24) · ONS Private Rent Affordability (PIPR/ASHE) · Defra/OHID PM2.5 Mortality Fraction · DWP Children in Low Income Families · Nomis Claimant Count (July 2026) · ONS CSP Crime (2024).</p>
       </section>
 
       <section class="panel" id="panel-docsearch">
-        <h2>Search council documents</h2>
+        <h2>Search council documents <span class="prov prov-direct" title="Meeting documents from the Council Gateway API, linked to the original PDFs">Direct record · Gateway</span></h2>
         <p class="lede">Search actual meeting minutes, agendas, and reports from this council's meetings.</p>
         <div class="docsearch-controls">
           <input type="text" id="docsearch-input" placeholder="Search by keyword, topic, or phrase…" autocomplete="off">
@@ -310,11 +311,67 @@
   <footer class="receipt-footer">
     <p>*** thank you for scrutinising your council ***</p>
     <p class="receipt-footer-sub">MHCLG · ONS · DfE · Defra/OHID · DWP · Nomis · Council Gateway (Poteris) · Democracy Club · Crown Commercial Service</p>
+    <button type="button" id="how-made-btn" class="how-made-btn">How we made this — sources, accuracy &amp; corrections</button>
   </footer>
 
 </div>
 
+<!-- ============================== RUBRIC MODAL ============================== -->
+<div id="rubric-modal" class="modal" aria-hidden="true">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="rubric-title">
+    <button type="button" class="modal-close" data-close="rubric-modal" aria-label="Close">×</button>
+    <h3 id="rubric-title">How the standout flags are calculated</h3>
+    <p class="modal-lede">Every pill is a benchmark against the other English councils, not an editorial verdict. Rank #1 is best on each indicator. Council tiers do different jobs, so read the flags alongside the council type.</p>
+    <table class="rubric-table">
+      <thead><tr><th>Flag</th><th>Rule</th><th>Source</th></tr></thead>
+      <tbody>
+        <tr><td>🚨 High crime</td><td>Bottom 20% nationally (rank 226–282 of 282)</td><td>ONS Community Safety Partnerships, 2024</td></tr>
+        <tr><td>🟢 Low crime</td><td>Top 20% nationally (rank 1–57)</td><td>ONS Community Safety Partnerships, 2024</td></tr>
+        <tr><td>🚨 Severe rent strain</td><td>Top 20% on rent-to-earnings ratio</td><td>ONS PIPR private rents ÷ ASHE earnings</td></tr>
+        <tr><td>🟢 Affordable rents</td><td>Bottom 20% on rent-to-earnings ratio</td><td>ONS PIPR private rents ÷ ASHE earnings</td></tr>
+        <tr><td>🚩 High child poverty</td><td>Top 20% of children in relative low-income households</td><td>DWP Children in Low Income Families</td></tr>
+        <tr><td>🔴 Heavy debt</td><td>Top 10% of outstanding borrowing per resident</td><td>MHCLG Quarterly Borrowing &amp; Investment</td></tr>
+        <tr><td>🟢 Low debt</td><td>Bottom 10% of outstanding borrowing per resident</td><td>MHCLG Quarterly Borrowing &amp; Investment</td></tr>
+        <tr><td>⚠️ Section 114 notice</td><td>An active statutory spending-freeze notice</td><td>MHCLG intervention register</td></tr>
+        <tr><td>⚡ Exceptional Financial Support</td><td>An active EFS capitalisation directive</td><td>MHCLG intervention register</td></tr>
+        <tr><td>⚡ Talk-vs-spend gap</td><td>Topic's budget share and discussion share differ by ≥ 12 percentage points</td><td>Derived: MHCLG outturn vs Gateway minutes</td></tr>
+      </tbody>
+    </table>
+    <p class="modal-foot">Thresholds are national deciles computed across all 282 authorities. Spot an error? <a href="#" data-goto-feedback>Report a discrepancy</a>.</p>
+  </div>
+</div>
+
+<!-- ============================== HOW WE MADE THIS ============================== -->
+<div id="how-made-modal" class="modal" aria-hidden="true">
+  <div class="modal-card modal-card-wide" role="dialog" aria-modal="true" aria-labelledby="howmade-title">
+    <button type="button" class="modal-close" data-close="how-made-modal" aria-label="Close">×</button>
+    <h3 id="howmade-title">How we made this</h3>
+    <p class="modal-lede">Council Receipts joins official government returns to the actual record of council meetings, so you can compare what a council spends against what it discusses. Here is exactly what is official, what is derived, and what is machine-classified — plus how to flag a mistake.</p>
+
+    <h4>Provenance, by type</h4>
+    <ul class="prov-legend">
+      <li><span class="prov prov-official">Official return</span> Published government statistics, used as-is. Figures are authoritative and traceable to the named release: MHCLG Revenue Outturn, MHCLG Borrowing, ONS population and quality-of-life statistics, DfE, DWP, Nomis.</li>
+      <li><span class="prov prov-direct">Direct record</span> Items published by councils or government as records of fact, presented with light formatting: Contracts Finder awards, Section 114 and EFS notices, Gateway meeting documents.</li>
+      <li><span class="prov prov-algo">Algorithmic extraction</span> Machine output that can be wrong. Discussion topics come from keyword classification of meeting minutes against a fixed 10-topic taxonomy. It counts what minutes mention, not debate quality or voting outcomes.</li>
+      <li><span class="prov prov-derived">Derived</span> A calculation we perform by joining two official sources (benchmarks, deciles, talk-vs-spend gaps). The inputs are official; the arithmetic is ours.</li>
+    </ul>
+
+    <h4>What you should treat with care</h4>
+    <ul class="caveat-list">
+      <li><strong>Discussion shares are algorithmic.</strong> A keyword hit is evidence a topic was mentioned, not that it was decided, funded or debated well.</li>
+      <li><strong>Single-year money figures.</strong> Spend is the 2024-25 Revenue Outturn; borrowing is the latest published quarter. These are snapshots, not multi-year trends.</li>
+      <li><strong>Contract values are as published.</strong> They may reflect framework ceilings, and multi-supplier framework lots are excluded.</li>
+      <li><strong>Tiers are not comparable.</strong> Shire districts have no social-care or education budget at all, so England-wide rankings should always be read within a tier (use the tier toggles).</li>
+      <li><strong>Some councils have incomplete minutes.</strong> Where Gateway coverage is thin, discussion panels are omitted and only finance and outcome metrics are shown.</li>
+    </ul>
+
+    <h4>Corrections</h4>
+    <p>If a number looks wrong, tell us — every report is read, and confirmed fixes are corrected at source in the public build. <a href="#" data-goto-feedback>Report a discrepancy</a>, or open an issue on <a href="https://github.com/ParthG60/council-receipts/issues/new" target="_blank" rel="noopener">GitHub</a>.</p>
+    <p class="modal-foot">Full method notes are in the <em>Methodology</em> panel on each council page. Code and data: <a href="https://github.com/ParthG60/council-receipts" target="_blank" rel="noopener">github.com/ParthG60/council-receipts</a>.</p>
+  </div>
+</div>
+
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" defer></script>
-<script src="app.js?v=20261005b" defer></script>
+<script src="app.js?v=20261006a" defer></script>
 </body>
 </html>

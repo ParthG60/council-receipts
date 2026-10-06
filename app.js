@@ -130,6 +130,144 @@ function initSectionTabs() {
   });
 }
 
+// ------------------------------------------------ postcode -> council ---
+// Keyless, CORS-enabled UK postcode lookup. Resolves a postcode to the
+// citizen's district council and, in two-tier areas, the county council too.
+const POSTCODE_RE = /^[A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2}$/i;
+
+function normaliseCouncilName(s) {
+  return (s || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\b(city of|county of|royal borough of|borough of|the|city|council|county|district|borough|of)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+let _nameIndex = null;
+function councilNameIndex() {
+  if (!_nameIndex) {
+    _nameIndex = {};
+    Object.keys(DATA.councils).forEach((k) => {
+      const n = normaliseCouncilName(k);
+      if (n && !(n in _nameIndex)) _nameIndex[n] = k;
+    });
+  }
+  return _nameIndex;
+}
+
+function matchCouncilName(name) {
+  if (!name) return null;
+  const idx = councilNameIndex();
+  const n = normaliseCouncilName(name);
+  if (!n) return null;
+  if (idx[n]) return idx[n];
+  const starts = Object.keys(idx).filter((k) => k.startsWith(n + " ") || n.startsWith(k + " "));
+  return starts.length === 1 ? idx[starts[0]] : null;
+}
+
+const _postcodeCache = {};
+function lookupPostcode(raw) {
+  const key = raw.toUpperCase().replace(/\s+/g, "");
+  if (key in _postcodeCache) return Promise.resolve(_postcodeCache[key]);
+  return fetch("https://api.postcodes.io/postcodes/" + encodeURIComponent(key))
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => {
+      const res = j && j.result;
+      const out = res
+        ? {
+            postcode: res.postcode,
+            district: res.admin_district,
+            county: res.admin_county,
+            ward: res.admin_ward,
+            districtKey: matchCouncilName(res.admin_district),
+            countyKey: matchCouncilName(res.admin_county),
+          }
+        : null;
+      _postcodeCache[key] = out;
+      return out;
+    })
+    .catch(() => null);
+}
+
+// HTML for the postcode result rows shown inside a search menu.
+function postcodeItemsHTML(info) {
+  if (!info) return `<div class="pc-none">Postcode not found. Check the format (e.g. SW1A 1AA).</div>`;
+  const rows = [];
+  if (info.districtKey) {
+    const isUpper = DATA.councils[info.districtKey].tier === "upper";
+    rows.push(
+      `<div class="pc-item" data-pc-council="${info.districtKey}">` +
+        `<span class="omni-kind">${isUpper ? "County" : "District"}</span>` +
+        `<span class="item-name">${info.districtKey}</span>` +
+        (info.ward ? `<span class="pc-ward">${info.ward}</span>` : "") +
+      `</div>`
+    );
+  }
+  if (info.countyKey && info.countyKey !== info.districtKey) {
+    rows.push(
+      `<div class="pc-item" data-pc-council="${info.countyKey}">` +
+        `<span class="omni-kind">County</span>` +
+        `<span class="item-name">${info.countyKey}</span>` +
+        `<span class="pc-ward">Schools, roads &amp; social care</span>` +
+      `</div>`
+    );
+  }
+  if (!rows.length) {
+    return `<div class="pc-none">${info.postcode} is in ${info.district || "an area"} — not in the current 282-authority build. <a href="#" data-goto-feedback>Report it</a> and we'll add it.</div>`;
+  }
+  const twoTier = rows.length > 1;
+  return (
+    `<div class="pc-head">${info.postcode}${twoTier ? " · two-tier area, pick a council" : ""}</div>` +
+    rows.join("")
+  );
+}
+
+// ---------------------------------------------- modals & provenance ---
+function openModal(id) {
+  const m = el(id);
+  if (!m) return;
+  m.classList.add("open");
+  m.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+}
+function closeModal(id) {
+  const m = el(id);
+  if (!m) return;
+  m.classList.remove("open");
+  m.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
+}
+
+function initModals() {
+  const rubricBtn = el("rubric-btn");
+  if (rubricBtn) rubricBtn.addEventListener("click", () => openModal("rubric-modal"));
+  const howBtn = el("how-made-btn");
+  if (howBtn) howBtn.addEventListener("click", () => openModal("how-made-modal"));
+
+  document.querySelectorAll("[data-close]").forEach((b) => {
+    b.addEventListener("click", () => closeModal(b.dataset.close));
+  });
+  document.querySelectorAll(".modal").forEach((m) => {
+    m.addEventListener("click", (e) => { if (e.target === m) closeModal(m.id); });
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") document.querySelectorAll(".modal.open").forEach((m) => closeModal(m.id));
+  });
+  // Any "report a discrepancy" link jumps to the feedback tab (delegated, so it
+  // also works for links injected later, e.g. in postcode results).
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest("[data-goto-feedback]");
+    if (!a) return;
+    e.preventDefault();
+    document.querySelectorAll(".modal.open").forEach((m) => closeModal(m.id));
+    const b = document.querySelector('.tab[data-tab="feedback"]');
+    if (b) b.click();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+}
+
 // ------------------------------------------------------- council view ---
 function initCouncilSelect() {
   const input = el("council-input");
@@ -138,19 +276,21 @@ function initCouncilSelect() {
   const names = Object.keys(DATA.councils).sort();
 
   function renderMenu(query = "") {
-    const q = query.trim().toLowerCase();
+    const qRaw = query.trim();
+    const q = qRaw.toLowerCase();
     const filtered = q ? names.filter((n) => n.toLowerCase().includes(q)) : names;
-    if (!filtered.length) {
-      menu.innerHTML = `<div class="combobox-empty">No matching councils found</div>`;
-      return;
-    }
-    menu.innerHTML = filtered
+    const isPc = POSTCODE_RE.test(qRaw);
+    let html = "";
+    if (isPc) html += `<div class="pc-result"><div class="pc-loading">Looking up ${qRaw.toUpperCase()}…</div></div>`;
+    html += filtered
       .map((n) => {
         const c = DATA.councils[n];
         const party = c.party ? `<span class="menu-party">${c.party}</span>` : "";
         return `<div class="combobox-item" data-name="${n}"><span class="item-name">${n}</span>${party}</div>`;
       })
       .join("");
+    if (!filtered.length && !isPc) html += `<div class="combobox-empty">No matching councils found</div>`;
+    menu.innerHTML = html;
 
     menu.querySelectorAll(".combobox-item").forEach((item) => {
       item.addEventListener("click", () => {
@@ -160,6 +300,22 @@ function initCouncilSelect() {
         renderCouncil(name);
       });
     });
+
+    if (isPc) {
+      const box = menu.querySelector(".pc-result");
+      lookupPostcode(qRaw).then((info) => {
+        if (!box || !menu.contains(box)) return;
+        box.innerHTML = postcodeItemsHTML(info);
+        box.querySelectorAll("[data-pc-council]").forEach((item) => {
+          item.addEventListener("click", () => {
+            const name = item.dataset.pcCouncil;
+            input.value = name;
+            menu.style.display = "none";
+            renderCouncil(name);
+          });
+        });
+      });
+    }
   }
 
   function openMenu() {
@@ -322,8 +478,11 @@ function renderStandout(c) {
 
   const shown = badges.slice(0, 5);
   box.innerHTML = shown.length
-    ? shown.map((b2) => `<span class="standout-badge ${b2.cls}"><span class="standout-icon">${b2.icon}</span>${b2.text}</span>`).join("")
+    ? shown.map((b2) => `<span class="standout-badge ${b2.cls}" data-rubric="1" title="Click to see how this flag is calculated"><span class="standout-icon">${b2.icon}</span>${b2.text}</span>`).join("")
     : `<span class="standout-badge neutral">No standout national extremes for this council.</span>`;
+  box.querySelectorAll(".standout-badge[data-rubric]").forEach((pill) => {
+    pill.addEventListener("click", () => openModal("rubric-modal"));
+  });
 
   const fl = el("forensic-link");
   if (fl && c.ons_code) fl.href = `housing-crime/index.html?council=${encodeURIComponent(c.ons_code)}`;
@@ -1693,8 +1852,10 @@ function initOmnibox() {
     const q = input.value.trim();
     if (!q) { close(); return; }
     const ql = q.toLowerCase();
+    const isPc = POSTCODE_RE.test(q);
     const councilHits = names.filter((n) => n.toLowerCase().includes(ql)).slice(0, 6);
     let html = "";
+    if (isPc) html += `<div class="pc-result"><div class="pc-loading">Looking up ${q.toUpperCase()}…</div></div>`;
     councilHits.forEach((n) => {
       const c = DATA.councils[n];
       html += `<div class="omnibox-item" data-council="${n}"><span class="omni-kind">Council</span><span class="item-name">${n}</span>${c.party ? `<span class="menu-party">${c.party}</span>` : ""}</div>`;
@@ -1717,6 +1878,23 @@ function initOmnibox() {
         }
       });
     });
+    if (isPc) {
+      const box = menu.querySelector(".pc-result");
+      lookupPostcode(q).then((info) => {
+        if (!box || !menu.contains(box)) return;
+        box.innerHTML = postcodeItemsHTML(info);
+        box.querySelectorAll("[data-pc-council]").forEach((item) => {
+          item.addEventListener("click", () => {
+            const nm = item.dataset.pcCouncil;
+            input.value = nm;
+            close();
+            const b = document.querySelector('.tab[data-tab="council"]');
+            if (b) b.click();
+            renderCouncil(nm);
+          });
+        });
+      });
+    }
   }
   input.addEventListener("input", render);
   input.addEventListener("focus", render);
@@ -1842,12 +2020,13 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261005a")
+  fetch("data.json?v=20261006a")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
       initCouncilSelect();
       initOmnibox();
+      initModals();
       renderNational();
       const tabParam = new URLSearchParams(location.search).get("tab");
       const tabBtn = tabParam && document.querySelector(`.tab[data-tab="${tabParam}"]`);
