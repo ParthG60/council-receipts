@@ -483,9 +483,6 @@ function renderStandout(c) {
   box.querySelectorAll(".standout-badge[data-rubric]").forEach((pill) => {
     pill.addEventListener("click", () => openModal("rubric-modal"));
   });
-
-  const fl = el("forensic-link");
-  if (fl && c.ons_code) fl.href = `housing-crime/index.html?council=${encodeURIComponent(c.ons_code)}`;
 }
 
 // ------------------------------------------------------- smart links ---

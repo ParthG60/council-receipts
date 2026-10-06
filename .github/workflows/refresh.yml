@@ -39,12 +39,11 @@ jobs:
       - name: Install dependencies
         run: pip install pandas numpy plotly odfpy openpyxl
 
-      - name: Run pipeline (fetch, build, verify) + AI-native + forensic builds
+      - name: Run pipeline (fetch, build, verify) + AI-native dossiers
         working-directory: data-repo/projects/council hack day
         run: |
           python pipeline.py
           python site/build_dossiers.py
-          python site/build_forensic.py
 
       - name: Commit refreshed site artifacts
         working-directory: data-repo/projects/council hack day/site
@@ -52,7 +51,7 @@ jobs:
           git config user.name "council-receipts-bot"
           git config user.email "actions@users.noreply.github.com"
           git add data.json search_index search_index_global.json search_index.json \
-                  dossiers llms.txt housing-crime
+                  dossiers llms.txt
           if git diff --staged --quiet; then
             echo "No data changes this run."
           else
