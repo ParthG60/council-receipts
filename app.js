@@ -703,6 +703,11 @@ function renderBorrowing(c) {
 }
 
 // ---------------------------------------------------- top contracts ---
+function contractsFinderUrl(q) {
+  return "https://www.contractsfinder.service.gov.uk/Search/Results?&searchTerm=" +
+    encodeURIComponent(q) + "&sort=relevance";
+}
+
 function renderContracts(c) {
   const rows = c.contracts;
   showPanel("panel-contracts", !!(rows && rows.length));
@@ -710,17 +715,19 @@ function renderContracts(c) {
   const total = rows.reduce((s, r) => s + (r.value_gbp || 0), 0);
   const body = rows.map((r) => `
     <tr>
-      <td>${r.supplier}</td>
+      <td><a href="${contractsFinderUrl(r.supplier)}" target="_blank" rel="noopener">${r.supplier}</a></td>
       <td class="num-cell">${fmtGbpM((r.value_gbp || 0) / 1_000_000)}</td>
       <td class="num-cell">${r.n}</td>
       <td class="num-cell">${r.latest ? r.latest.replace(/-/g, "/") : "—"}</td>
     </tr>`).join("");
+  const councilQuery = currentCouncilName || "";
   el("contracts-body").innerHTML = `
     <table class="league contracts-table">
       <thead><tr><th>Supplier</th><th class="num-th">Awarded value</th><th class="num-th">Contracts</th><th class="num-th">Latest</th></tr></thead>
       <tbody>${body}</tbody>
     </table>
-    <p class="contracts-total">Combined value of the largest awards shown: <strong>${fmtGbpM(total / 1_000_000)}</strong></p>`;
+    <p class="contracts-total">Combined value of the largest awards shown: <strong>${fmtGbpM(total / 1_000_000)}</strong></p>
+    <p class="contracts-note">Click a supplier to search all their awards on <a href="https://www.contractsfinder.service.gov.uk/Search" target="_blank" rel="noopener">Contracts Finder</a>, the UK government's public register of tenders and contract awards. <a href="${contractsFinderUrl(councilQuery)}" target="_blank" rel="noopener">See all ${councilQuery} awards →</a></p>`;
 }
 
 // ------------------------------------------------- ombudsman watchdog ---
@@ -1317,6 +1324,7 @@ let docSearchCache = null;      // per-council raw doc list (compact format)
 let docSearchCouncil = null;
 let docSearchIndex = null;      // mini inverted index: token -> Set(docIdx)
 let docSearchTopics = new Set(); // active exact-topic filters (decoupled from text input)
+const DOC_RESULT_LIMIT = 25;     // cap rendered results to keep the page short
 
 // Compact search index field names: d=date, m=meeting, s=snippet, u=pdf_url, t=topics[]
 const STOPWORDS = new Set([
@@ -1449,11 +1457,11 @@ function renderDocSearchResults() {
   // Sort newest first (dates are ISO strings)
   results.sort((a, b) => (a.d < b.d ? 1 : -1));
 
-  const shown = results.slice(0, 200);
+  const shown = results.slice(0, DOC_RESULT_LIMIT);
   const total = results.length;
 
   el("docsearch-stats").innerHTML = total
-    ? `${total} document${total === 1 ? "" : "s"} matched`
+    ? `${total} document${total === 1 ? "" : "s"} matched${total > DOC_RESULT_LIMIT ? ` — showing the ${DOC_RESULT_LIMIT} most recent` : ""}`
     : "No documents matched.";
 
   const wrap = el("docsearch-results");

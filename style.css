@@ -1075,6 +1075,14 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
   margin-bottom: 8px;
 }
 
+/* keep the results list contained so the page doesn't grow without limit */
+#docsearch-results {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 6px;
+  border-top: 1px solid var(--rule);
+}
+
 .docsearch-result {
   padding: 12px 0;
   border-bottom: 1.5px dashed var(--rule);
@@ -1470,12 +1478,21 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
 
 /* --------------------------------------------------- contracts table --- */
 .contracts-table { width: 100%; }
+.contracts-table a { color: var(--stamp); text-decoration: none; border-bottom: 1px solid transparent; }
+.contracts-table a:hover { border-bottom-color: var(--stamp); }
 .contracts-total {
   font-family: var(--mono);
   font-size: 0.78rem;
   color: var(--ink-soft);
   margin-top: 8px;
 }
+.contracts-note {
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+.contracts-note a { color: var(--stamp); }
 
 /* --------------------------------------------------------- mini btn --- */
 .mini-btn {
