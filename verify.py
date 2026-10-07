@@ -37,21 +37,22 @@ def main():
     data = json.loads((SITE / "data.json").read_text())
     councils = data.get("councils", {})
 
-    check(len(councils) == 282, f"282 councils in registry (got {len(councils)})")
+    check(len(councils) >= 283, f">=283 councils in registry (got {len(councils)})")
     check(all(ONS_RE.match(c.get("ons_code", "")) for c in councils.values()),
           "every council has a valid ONS LAD code")
 
     def count(field, truthy=True):
         return sum(1 for c in councils.values() if (bool(c.get(field)) if truthy else c.get(field) is not None))
 
-    check(count("borrowing") == 282, f"borrowing data for all 282 (got {count('borrowing')})")
+    n_reg = len(councils)
+    check(count("borrowing") == n_reg, f"borrowing data for all {n_reg} (got {count('borrowing')})")
     check(count("money") >= 275, f"finance data for >=275 councils (got {count('money')})")
     check(count("topic_share") >= 230, f"topic share for >=230 councils (got {count('topic_share')})")
     cw = data.get("corpus_window")
     check(bool(cw) and cw.get("label") and cw.get("docs", 0) > 0,
           "discussion corpus window + doc count present")
-    check(data.get("league_table", {}).get("rows") and len(data["league_table"]["rows"]) == 282,
-          "league table has 282 rows")
+    check(data.get("league_table", {}).get("rows") and len(data["league_table"]["rows"]) == n_reg,
+          f"league table has {n_reg} rows")
 
     # party_by_tier present and populated for the comparison tiers
     pbt = data.get("party_by_tier") or {}

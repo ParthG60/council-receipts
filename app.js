@@ -215,7 +215,7 @@ function postcodeItemsHTML(info) {
     );
   }
   if (!rows.length) {
-    return `<div class="pc-none">${info.postcode} is in ${info.district || "an area"} — not in the current 282-authority build. <a href="#" data-goto-feedback>Report it</a> and we'll add it.</div>`;
+    return `<div class="pc-none">${info.postcode} is in ${info.district || "an area"} — not in the current ${QOL_N}-council build. <a href="#" data-goto-feedback>Report it</a> and we'll add it.</div>`;
   }
   const twoTier = rows.length > 1;
   return (
@@ -425,7 +425,7 @@ function renderCouncil(name) {
 // ---------------------------------------------- standout benchmark flags ---
 // Instant "what stands out about this council" pills from national ranks.
 // Rank convention in data.json: 1 = best on every QoL indicator.
-const QOL_N = 282;
+let QOL_N = 283;
 
 function borrowingPercentiles() {
   const vals = Object.values(DATA.councils)
@@ -515,7 +515,7 @@ function buildCitizenBriefing(c) {
   L.push(`- Population: ${c.population != null ? c.population.toLocaleString("en-GB") : "n/a"}`);
   L.push("");
 
-  L.push("## Outcomes vs England (rank out of 282; #1 = best)");
+  L.push(`## Outcomes vs England (rank out of ${QOL_N}; #1 = best)`);
   const qrow = [
     ["Life expectancy (yrs)", q.life_expectancy, q.life_expectancy_rank, eng.life_expectancy, "ONS 2025"],
     ["GCSE Attainment 8 (pts)", q.attainment8, q.attainment8_rank, eng.attainment8, "DfE 2023/24"],
@@ -527,7 +527,7 @@ function buildCitizenBriefing(c) {
   qrow.forEach(([label, val, rank, engVal, src]) => {
     if (val == null) return;
     const parts = [`${val}`];
-    if (rank != null) parts.push(`rank #${rank} of 282`);
+    if (rank != null) parts.push(`rank #${rank} of ${QOL_N}`);
     if (engVal != null) parts.push(`England avg ${engVal}`);
     L.push(`- ${label}: ${parts.join("; ")} (${src})`);
   });
@@ -539,7 +539,7 @@ function buildCitizenBriefing(c) {
   if (d.is_efs && d.efs_amount_gbp_m != null) L.push(`- Exceptional Financial Support: £${d.efs_amount_gbp_m}m`);
   if (b.per_resident != null) {
     const parts = [`£${Math.round(b.per_resident).toLocaleString("en-GB")} per resident`];
-    if (b.rank != null) parts.push(`rank #${b.rank} of ${be.n || 282} highest`);
+    if (b.rank != null) parts.push(`rank #${b.rank} of ${be.n || QOL_N} highest`);
     if (be.mean_per_resident != null) parts.push(`England avg £${Math.round(be.mean_per_resident).toLocaleString("en-GB")}`);
     if (be.median_per_resident != null) parts.push(`England median £${Math.round(be.median_per_resident).toLocaleString("en-GB")}`);
     L.push(`- Borrowing: ${parts.join("; ")}${b.total_gbp_m != null ? ` (total £${Math.round(b.total_gbp_m).toLocaleString("en-GB")}m)` : ""}`);
@@ -725,7 +725,7 @@ function renderBorrowing(c) {
   const engAvg = eng.mean_per_resident;
   const engMed = eng.median_per_resident;
   const rank = b.rank;
-  const rankTxt = rank != null ? `Rank #${rank} of ${eng.n || 282} highest` : "";
+  const rankTxt = rank != null ? `Rank #${rank} of ${eng.n || QOL_N} highest` : "";
   const engLine = [
     rankTxt,
     engAvg != null ? `England avg £${Math.round(engAvg).toLocaleString("en-GB")}` : "",
@@ -741,7 +741,7 @@ function renderBorrowing(c) {
     {
       label: "Debt per resident",
       value: b.per_resident != null ? "£" + Math.round(b.per_resident).toLocaleString("en-GB") : "—",
-      corner: rank != null ? `Rank #${rank} of ${eng.n || 282} highest` : "",
+      corner: rank != null ? `Rank #${rank} of ${eng.n || QOL_N} highest` : "",
       sub: engLine,
     },
   ];
@@ -1271,7 +1271,7 @@ function renderQoL(c) {
       const cls = Math.abs(diff) < 0.2 ? "neutral" : isBetter ? "better" : "worse";
       diffBadge = `<span class="qol-tag ${cls}">${sign}${diff.toFixed(1)} vs England</span>`;
     }
-    const rankTxt = item.rank != null ? `<span class="qol-rank-tag">Rank #${item.rank} of 282</span>` : "";
+    const rankTxt = item.rank != null ? `<span class="qol-rank-tag">Rank #${item.rank} of ${QOL_N}</span>` : "";
     return `
       <div class="qol-card">
         <div class="qol-header">
@@ -1587,7 +1587,7 @@ function redrawPartyCharts() {
     single: "single-tier authorities — unitaries, mets and London boroughs, which run all services",
     district: "shire districts — lower-tier councils that do not run social care or education",
     county: "shire counties — upper-tier councils that run social care, education and highways",
-    all: "all 282 English authorities",
+    all: `all ${QOL_N} English authorities`,
   };
   const cap = el("party-caption");
   if (cap) cap.textContent = `Equal-weighted mean spend share across ${labels[partyTier]}. n = number of councils in each party group. Source: MHCLG Revenue Outturn 2024-25 · control from Open Council Data UK (2026).`;
@@ -2076,10 +2076,11 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261007c")
+  fetch("data.json?v=20261007d")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
+      QOL_N = Object.keys(data.councils || {}).length || QOL_N;
       initCouncilSelect();
       initOmnibox();
       initModals();

@@ -11,6 +11,7 @@ from pathlib import Path
 SITE = Path(__file__).parent
 DATA = json.loads((SITE / "data.json").read_text())
 COUNCILS = DATA.get("councils", {})
+N_COUNCILS = len(COUNCILS) or 283
 DOSS = SITE / "dossiers"
 DOSS.mkdir(exist_ok=True)
 
@@ -48,7 +49,7 @@ def dossier(name, c):
     L.append(f"- Population: {fmt_pop(c.get('population'))}")
     L.append("")
 
-    L.append("## Outcomes vs England (rank out of 282; #1 = best)")
+    L.append(f"## Outcomes vs England (rank out of {N_COUNCILS}; #1 = best)")
     for label, val, rank, eng_val, src in [
         ("Life expectancy (years)", q.get("life_expectancy"), q.get("life_expectancy_rank"), eng.get("life_expectancy"), "ONS 2025"),
         ("GCSE Attainment 8 (points)", q.get("attainment8"), q.get("attainment8_rank"), eng.get("attainment8"), "DfE 2023/24"),
@@ -61,7 +62,7 @@ def dossier(name, c):
             continue
         parts = [f"{val}"]
         if rank is not None:
-            parts.append(f"rank #{rank} of 282")
+            parts.append(f"rank #{rank} of {N_COUNCILS}")
         if eng_val is not None:
             parts.append(f"England avg {eng_val}")
         L.append(f"- {label}: {'; '.join(parts)} ({src})")
@@ -78,7 +79,7 @@ def dossier(name, c):
     if b.get("per_resident") is not None:
         parts = [f"£{round(b['per_resident']):,} per resident"]
         if b.get("rank") is not None:
-            parts.append(f"rank #{b['rank']} of {be.get('n', 282)} highest")
+            parts.append(f"rank #{b['rank']} of {be.get('n', N_COUNCILS)} highest")
         if be.get("mean_per_resident") is not None:
             parts.append(f"England avg £{round(be['mean_per_resident']):,}")
         if be.get("median_per_resident") is not None:
@@ -149,7 +150,7 @@ def dossier(name, c):
 count = 0
 index_lines = ["# Council Receipts",
                "",
-               "Verified English local-government benchmarking data, 282 councils.",
+               f"Verified English local-government benchmarking data, {N_COUNCILS} councils.",
                f"Interactive: {SITE_URL}/",
                "",
                "## Plain-text dossiers",

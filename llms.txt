@@ -1,6 +1,6 @@
 # Council Receipts
 
-Verified English local-government benchmarking data, 282 councils.
+Verified English local-government benchmarking data, 283 councils.
 Interactive: https://parthgoyal.uk/council-receipts/
 
 ## Plain-text dossiers
@@ -126,6 +126,7 @@ Interactive: https://parthgoyal.uk/council-receipts/
 - [Ipswich](https://parthgoyal.uk/council-receipts/dossiers/E07000202.md)
 - [Isle of Wight](https://parthgoyal.uk/council-receipts/dossiers/E06000046.md)
 - [Islington](https://parthgoyal.uk/council-receipts/dossiers/E09000019.md)
+- [Kensington and Chelsea](https://parthgoyal.uk/council-receipts/dossiers/E09000020.md)
 - [Kent](https://parthgoyal.uk/council-receipts/dossiers/E10000016.md)
 - [King's Lynn and West Norfolk](https://parthgoyal.uk/council-receipts/dossiers/E07000146.md)
 - [Kingston upon Hull, City of](https://parthgoyal.uk/council-receipts/dossiers/E06000010.md)
