@@ -1801,6 +1801,7 @@ function drawLeagueTable(lt) {
     { key: "claimant_rate_pct", label: "Claimant %", unit: "%" },
     { key: "air_quality_pm25_pct", label: "Air Quality", unit: "%" },
     { key: "crime_per_1000", label: "Crime / 1k", unit: "" },
+    { key: "house_earnings", label: "House / Earnings", unit: "×" },
   ];
 
   // 1. Sort all rows and assign global sort rank
@@ -2104,7 +2105,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261007")
+  fetch("data.json?v=20261007b")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;

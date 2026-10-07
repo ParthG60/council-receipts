@@ -427,6 +427,44 @@ def load_portals():
     return out
 
 
+def _ratio(price, weekly_pay):
+    try:
+        price = float(price)
+        pay = float(weekly_pay) * 52.0
+    except (TypeError, ValueError):
+        return None
+    if pay <= 0 or price <= 0:
+        return None
+    return round(price / pay, 1)
+
+
+def load_house_earnings(reg):
+    """{ons_code: house-price-to-earnings ratio} plus the England ratio.
+    Ratio = HM Land Registry average house price / (ASHE median full-time weekly pay x 52).
+    Primary source data_england/profile_all.csv; legacy data/profile.csv (by name) fills gaps."""
+    out, eng = {}, None
+    pa = read_csv_optional(ENG_DIR / "profile_all.csv")
+    if pa is not None:
+        for _, r in pa.iterrows():
+            v = _ratio(r.get("median_house_price"), r.get("median_ft_pay"))
+            if v is not None:
+                out[r["ons_code"]] = v
+    po = read_csv_optional(DATA_DIR / "profile.csv")
+    if po is not None:
+        name2code = {r["name"]: code for code, r in reg.items()}
+        for _, r in po.iterrows():
+            v = _ratio(r.get("median_house_price"), r.get("median_ft_pay"))
+            if v is None:
+                continue
+            if r["council"] == "England":
+                eng = v
+            else:
+                code = name2code.get(r["council"])
+                if code and code not in out:
+                    out[code] = v
+    return out, eng
+
+
 def borrowing_england(borrowing, population):
     """England borrowing benchmarks + per-council rank (1 = most indebted)."""
     per = {}
@@ -584,6 +622,13 @@ def main():
                 "crime_rank": int(qr["crime_rank"]) if pd.notna(qr["crime_rank"]) else None,
             }
 
+    # house-price-to-earnings ratio (HPI average price / ASHE annual full-time pay)
+    house_earn, house_earn_eng = load_house_earnings(reg)
+    for code in qol_by_code:
+        qol_by_code[code]["house_earnings"] = house_earn.get(code)
+    if qol_england:
+        qol_england["house_earnings"] = house_earn_eng
+
     distress_df = read_csv_optional(ENG_DIR / "financial_distress.csv")
     distress_by_code = {}
     distress_watchlist = []
@@ -717,6 +762,7 @@ def main():
         {"id": "claimant_rate_pct", "label": "Claimant Rate", "unit": "%", "lower_better": True},
         {"id": "air_quality_pm25_pct", "label": "Air Quality (PM2.5)", "unit": "%", "lower_better": True},
         {"id": "crime_per_1000", "label": "Crime / 1k", "unit": "", "lower_better": True},
+        {"id": "house_earnings", "label": "House / Earnings", "unit": "×", "lower_better": True},
     ]
 
     league_rows = []
@@ -737,6 +783,7 @@ def main():
             "claimant_rate_pct": q.get("claimant_rate_pct"),
             "air_quality_pm25_pct": q.get("air_quality_pm25_pct"),
             "crime_per_1000": q.get("crime_per_1000"),
+            "house_earnings": q.get("house_earnings"),
         }
         league_rows.append(row)
     league_table = {"indicators": QOL_INDICATORS, "rows": league_rows}
