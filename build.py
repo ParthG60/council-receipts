@@ -410,7 +410,7 @@ def load_contracts():
                 "n": int(r["n_contracts"]),
                 "latest": str(r["latest_award"]) if pd.notna(r["latest_award"]) else None,
                 "title": r.get("top_title") if isinstance(r.get("top_title"), str) else None,
-                "url": (f"https://www.contractsfinder.service.gov.uk/Published/Notice/{nid}"
+                "url": (f"https://www.contractsfinder.service.gov.uk/Notice/{nid}"
                         if isinstance(nid, str) and nid else None),
             })
         out[code] = recs

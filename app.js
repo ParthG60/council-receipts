@@ -2076,7 +2076,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261007d")
+  fetch("data.json?v=20261007e")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
