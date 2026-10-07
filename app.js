@@ -116,20 +116,6 @@ function initTabs() {
   });
 }
 
-// in-council section tabs (Overview / Agenda / Money / Outcomes)
-function initSectionTabs() {
-  document.querySelectorAll(".section-tab").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".section-tab").forEach((b) => b.classList.remove("active"));
-      document.querySelectorAll(".section-body").forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      const body = document.querySelector(`.section-body[data-section-body="${btn.dataset.section}"]`);
-      if (body) body.classList.add("active");
-      window.dispatchEvent(new Event("resize"));
-    });
-  });
-}
-
 // ------------------------------------------------ postcode -> council ---
 // Keyless, CORS-enabled UK postcode lookup. Resolves a postcode to the
 // citizen's district council and, in two-tier areas, the county council too.
@@ -196,10 +182,15 @@ function postcodeItemsHTML(info) {
   if (!info) return `<div class="pc-none">Postcode not found. Check the format (e.g. SW1A 1AA).</div>`;
   const rows = [];
   if (info.districtKey) {
-    const isUpper = DATA.councils[info.districtKey].tier === "upper";
+    const cc = DATA.councils[info.districtKey];
+    const kind = cc.tier === "upper" ? "County"
+      : cc.la_class === "LB" ? "London Borough"
+      : cc.la_class === "MD" ? "Metropolitan Borough"
+      : cc.la_class === "UA" ? "Unitary"
+      : "District";
     rows.push(
       `<div class="pc-item" data-pc-council="${info.districtKey}">` +
-        `<span class="omni-kind">${isUpper ? "County" : "District"}</span>` +
+        `<span class="omni-kind">${kind}</span>` +
         `<span class="item-name">${info.districtKey}</span>` +
         (info.ward ? `<span class="pc-ward">${info.ward}</span>` : "") +
       `</div>`
@@ -523,6 +514,8 @@ function buildCitizenBriefing(c) {
     ["Child poverty (%)", q.child_poverty_pct, q.child_poverty_rank, eng.child_poverty_pct, "DWP"],
     ["Claimant rate (%)", q.claimant_rate_pct, q.claimant_rate_rank, eng.claimant_rate_pct, "Nomis 2026"],
     ["Crime per 1,000", q.crime_per_1000, q.crime_rank, eng.crime_per_1000, "ONS CSP 2024"],
+    ["Air quality (PM2.5, % of deaths)", q.air_quality_pm25_pct, q.air_quality_rank, eng.air_quality_pm25_pct, "Defra/OHID"],
+    ["House price / earnings (×)", q.house_earnings, q.house_earnings_rank, eng.house_earnings, "HPI/ASHE"],
   ];
   qrow.forEach(([label, val, rank, engVal, src]) => {
     if (val == null) return;
@@ -636,86 +629,7 @@ function fmtGbpM(n) {
   return "£" + Math.round(n).toLocaleString("en-GB") + "m";
 }
 
-function renderBriefing(c) {
-  const b = c.briefing;
-  const box = el("exec-briefing");
-  if (!b || !box) return;
-
-  // Governance
-  const govValue = b.control || "—";
-  const govSub = b.control_changed && b.control_since
-    ? `changed in ${b.control_since}`
-    : (b.control_since ? `in control since ${b.control_since}` : "");
-
-  // Fiscal
-  const fiscalValue = b.is_s114 ? "Section 114" : (b.distress_status || "Stable");
-  const debtTxt = b.debt_per_resident != null ? `£${Math.round(b.debt_per_resident).toLocaleString("en-GB")} debt / resident` : "debt data unavailable";
-  const fiscalCls = b.is_s114 ? "brief-alert" : (b.distress_status && b.distress_status !== "Stable" ? "brief-warn" : "");
-
-  // Accountability
-  let acctValue = "—", acctSub = "no ombudsman data";
-  if (b.uphold_rate != null) {
-    acctValue = Math.round(b.uphold_rate) + "% upheld";
-    if (b.uphold_rate_peer != null) {
-      const diff = Math.round(b.uphold_rate - b.uphold_rate_peer);
-      acctSub = diff === 0 ? "in line with peers" : `${diff > 0 ? "+" : ""}${diff}pp vs peers`;
-    } else {
-      acctSub = "of investigated complaints";
-    }
-  }
-
-  // Disconnect
-  let disconnect = "";
-  if (b.gap) {
-    const g = b.gap;
-    const talkMore = g.gap_pp > 0;
-    disconnect = `<div class="brief-disconnect">
-      <span class="brief-disconnect-tag">The talk-vs-spend disconnect</span>
-      <span><strong>${g.topic}</strong> takes <strong>${g.spend_pct.toFixed(0)}%</strong> of the budget but just <strong>${g.discussion_pct.toFixed(0)}%</strong> of committee debate.</span>
-    </div>`;
-  }
-  if (b.surge) {
-    disconnect += `<div class="brief-disconnect brief-surge">
-      <span class="brief-disconnect-tag">Gaining steam</span>
-      <span><strong>${b.surge.topic}</strong> discussion is up <strong>+${b.surge.change_pp}pp</strong> in the most recent two months.</span>
-    </div>`;
-  }
-
-  box.innerHTML = `
-    <div class="briefing-head">
-      <span class="briefing-kicker">Executive briefing</span>
-      <span class="briefing-scope">${c.la_class_label || ""}${c.parent_county ? " · part of " + c.parent_county : ""}</span>
-    </div>
-    <div class="briefing-grid">
-      <div class="brief-card">
-        <div class="brief-label">Governance</div>
-        <div class="brief-value">${govValue}</div>
-        <div class="brief-sub">${govSub}</div>
-      </div>
-      <div class="brief-card ${fiscalCls}">
-        <div class="brief-label">Fiscal health</div>
-        <div class="brief-value">${fiscalValue}</div>
-        <div class="brief-sub">${debtTxt}</div>
-      </div>
-      <div class="brief-card">
-        <div class="brief-label">Accountability</div>
-        <div class="brief-value">${acctValue}</div>
-        <div class="brief-sub">${acctSub}</div>
-      </div>
-    </div>
-    ${disconnect}
-  `;
-}
-
 // -------------------------------------------------- borrowing & debt ---
-function medianPerResident() {
-  const vals = Object.values(DATA.councils)
-    .map((c) => (c.borrowing ? c.borrowing.per_resident : null))
-    .filter((v) => v != null);
-  vals.sort((a, b) => a - b);
-  return vals.length ? vals[Math.floor(vals.length / 2)] : null;
-}
-
 function renderBorrowing(c) {
   const b = c.borrowing;
   const panel = el("panel-borrowing");
@@ -787,26 +701,6 @@ function renderContracts(c) {
     </table>
     <p class="contracts-total">Combined value of the largest awards shown: <strong>${fmtGbpM(total / 1_000_000)}</strong> <span class="contracts-window">(awards published 2023–2026)</span></p>
     <p class="contracts-note">Each supplier links to its single largest award notice on Contracts Finder (the UK government's public register). The value is the total awarded to that supplier across its notices in the window and can include multi-year frameworks. <a href="${contractsFinderUrl(councilQuery + " Council")}" target="_blank" rel="noopener">See all ${councilQuery} awards →</a></p>`;
-}
-
-// ------------------------------------------------- ombudsman watchdog ---
-function renderOmbudsman(c) {
-  const o = c.ombudsman;
-  showPanel("panel-ombudsman", !!o);
-  if (!o) return;
-  const rateSub = o.uphold_rate_peer != null ? `peer average ${Math.round(o.uphold_rate_peer)}%` : "of investigated complaints";
-  const cards = [
-    { label: "Upheld rate", value: o.uphold_rate != null ? Math.round(o.uphold_rate) + "%" : "—", sub: rateSub },
-    { label: "Complaints decided", value: o.complaints_total != null ? Math.round(o.complaints_total) : "—", sub: "enquiries & complaints" },
-    { label: "Cases upheld", value: o.upheld != null ? Math.round(o.upheld) : "—", sub: "found at fault" },
-    { label: "Recommendations met", value: o.compliance_rate != null ? Math.round(o.compliance_rate) + "%" : "—", sub: "implemented to LGO satisfaction" },
-  ];
-  el("ombudsman-body").innerHTML = cards.map((card) => `
-    <div class="stat-card">
-      <div class="stat-label">${card.label}</div>
-      <div class="stat-value">${card.value}</div>
-      <div class="stat-sub">${card.sub}</div>
-    </div>`).join("");
 }
 
 function renderPopulation(c) {
@@ -1287,87 +1181,6 @@ function renderQoL(c) {
   el("qol-grid").innerHTML = cardsHtml;
 }
 
-// ---------------------------------------------------- topic momentum ---
-function renderMomentum(c) {
-  const m = c.momentum;
-  const hasData = m && m.months && m.months.length && m.changes && m.changes.length;
-  showPanel("panel-momentum", !!hasData);
-  if (!hasData) return;
-
-  // Legend: top 4 by |change| + rest collapsed into grey
-  const months = m.months;
-  const short = months.map((mm) => {
-    const [y, mo] = mm.split("-");
-    const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return names[parseInt(mo, 10) - 1] + " " + y.slice(2);
-  });
-
-  const byChange = m.changes.slice(); // sorted by |change| desc
-  const topTopics = byChange.slice(0, 4).map((ch) => ch.topic);
-
-  // Multi-line chart: top movers coloured, everything else pane-invisible grey
-  const traces = [];
-  m.changes.forEach((ch) => {
-    const t = ch.topic;
-    const vals = m.series[t] || [];
-    const isTop = topTopics.includes(t);
-    traces.push({
-      x: short, y: vals, type: "scatter", mode: "lines+markers",
-      line: { width: isTop ? 2.5 : 1.2, color: isTop ? DATA.topic_colors[t] || ACCENT : GREY },
-      marker: { size: isTop ? 4 : 0, color: isTop ? DATA.topic_colors[t] || ACCENT : GREY },
-      name: t, hovertemplate: `${t}<br>%{x}: %{y}%<extra></extra>`,
-      showlegend: false, hoverinfo: "skip",
-    });
-  });
-
-  Plotly.newPlot(
-    "momentum-chart", traces,
-    {
-      showlegend: false, hovermode: "x unified",
-      margin: { l: 42, r: 18, t: 10, b: 40 },
-      height: 340,
-      xaxis: { title: "", tickangle: -20 },
-      yaxis: { title: "Share of discussion (%)", ticksuffix: "%", zeroline: false },
-      font: { ...BASE_FONT, size: isMobile() ? 10.5 : 12 },
-      template: "simple_white",
-    },
-    PLOTLY_CONFIG
-  );
-
-  // Bars: recent 2-month avg vs prior 2-month avg, sorted by |change|
-  const rows = byChange.filter((ch) => Math.abs(ch.change_pp) > 0.3).slice(0, 6);
-  if (rows.length === 0) {
-    el("momentum-key").innerHTML = "";
-    el("momentum-bar").innerHTML = `<p class="empty-note">No meaningful topic shifts in this window — discussion shares stayed fairly steady.</p>`;
-    return;
-  }
-
-  el("momentum-key").innerHTML =
-    swatch(ACCENT, "Last 2 months avg") + " &nbsp; " + swatch(GREY, "Previous 2 months avg");
-
-  const labels = rows.map((r) => r.topic);
-  const recentVals = rows.map((r) => r.recent_avg);
-  const priorVals = rows.map((r) => r.prior_avg);
-  const colors = rows.map((r) => (r.recent_avg >= r.prior_avg ? SPEND_COLOR : GREY));
-
-  Plotly.newPlot(
-    "momentum-bar",
-    [
-      withClip({ x: priorVals.slice().reverse(), y: labels.slice().reverse(), type: "bar", orientation: "h", marker: { color: GREY }, text: priorVals.slice().reverse().map((v) => (v ? v.toFixed(0) + "%" : "0")), textposition: "outside", hoverinfo: "skip" }),
-      withClip({ x: recentVals.slice().reverse(), y: labels.slice().reverse(), type: "bar", orientation: "h", marker: { color: ACCENT }, text: recentVals.slice().reverse().map((v) => (v ? v.toFixed(0) + "%" : "0")), textposition: "outside", hoverinfo: "skip" }),
-    ],
-    {
-      barmode: "group", showlegend: false,
-      margin: { l: isMobile() ? 115 : 160, r: 35, t: 10, b: 25 },
-      height: chartHeight(labels.length, isMobile() ? 34 : 40),
-      font: { ...BASE_FONT, size: isMobile() ? 10.5 : 12 },
-      xaxis: { title: "", ticksuffix: "%", zeroline: false, range: headroomRange([...priorVals, ...recentVals]) },
-      yaxis: { title: "" },
-      template: "simple_white",
-    },
-    PLOTLY_CONFIG
-  );
-}
 
 // ---------------------------------------------------- document search ---
 let docSearchCache = null;      // per-council raw doc list (compact format)
@@ -1861,8 +1674,12 @@ function initFeedbackForm() {
       },
       body: formData
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
       .then((data) => {
+        if (data && data.success === "false") throw new Error("rejected");
         if (btn) btn.disabled = false;
         if (status) {
           status.style.color = "#166534";
@@ -1886,7 +1703,7 @@ let globalIndexPromise = null;
 
 function loadGlobalIndex() {
   if (globalIndexPromise) return globalIndexPromise;
-  globalIndexPromise = fetch("search_index_global.json?v=20261005a")
+  globalIndexPromise = fetch("search_index_global.json?v=20261007e")
     .then((r) => r.json())
     .then((d) => { globalIndex = d; return d; })
     .catch(() => { globalIndex = {}; return {}; });
