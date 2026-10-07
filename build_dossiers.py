@@ -5,6 +5,7 @@
 Idempotent. Run after build.py: python site/build_dossiers.py
 """
 import json
+import re
 from pathlib import Path
 
 SITE = Path(__file__).parent
@@ -32,11 +33,13 @@ def money_rows(c):
 
 def dossier(name, c):
     q = c.get("qol") or {}
+    eng = DATA.get("qol_england") or {}
     d = c.get("financial_distress") or {}
     b = c.get("borrowing") or {}
+    be = DATA.get("borrowing_england") or {}
     L = []
     code = c.get("ons_code") or "unknown"
-    L.append(f"# {name} — council dossier")
+    L.append(f"# {name} — citizen briefing")
     L.append("")
     L.append(f"- ONS code: {code}")
     L.append(f"- Tier: {c.get('la_class_label') or c.get('tier') or 'n/a'}"
@@ -44,19 +47,28 @@ def dossier(name, c):
     L.append(f"- Political control: {c.get('party_full') or c.get('party') or 'n/a'}")
     L.append(f"- Population: {fmt_pop(c.get('population'))}")
     L.append("")
-    L.append("## Outcomes (national rank out of 282; #1 = best)")
-    for label, val, rank in [
-        ("Life expectancy (years)", q.get("life_expectancy"), q.get("life_expectancy_rank")),
-        ("GCSE Attainment 8 (points)", q.get("attainment8"), q.get("attainment8_rank")),
-        ("Rent affordability (% of pay)", q.get("rent_affordability"), q.get("rent_affordability_rank")),
-        ("Child poverty (%)", q.get("child_poverty_pct"), q.get("child_poverty_rank")),
-        ("Claimant rate (%)", q.get("claimant_rate_pct"), q.get("claimant_rate_rank")),
-        ("Crime per 1,000 residents", q.get("crime_per_1000"), q.get("crime_rank")),
+
+    L.append("## Outcomes vs England (rank out of 282; #1 = best)")
+    for label, val, rank, eng_val, src in [
+        ("Life expectancy (years)", q.get("life_expectancy"), q.get("life_expectancy_rank"), eng.get("life_expectancy"), "ONS 2025"),
+        ("GCSE Attainment 8 (points)", q.get("attainment8"), q.get("attainment8_rank"), eng.get("attainment8"), "DfE 2023/24"),
+        ("Rent affordability (% of pay)", q.get("rent_affordability"), q.get("rent_affordability_rank"), eng.get("rent_affordability"), "ONS PIPR/ASHE"),
+        ("Child poverty (%)", q.get("child_poverty_pct"), q.get("child_poverty_rank"), eng.get("child_poverty_pct"), "DWP"),
+        ("Claimant rate (%)", q.get("claimant_rate_pct"), q.get("claimant_rate_rank"), eng.get("claimant_rate_pct"), "Nomis 2026"),
+        ("Crime per 1,000 residents", q.get("crime_per_1000"), q.get("crime_rank"), eng.get("crime_per_1000"), "ONS CSP 2024"),
     ]:
-        if val is not None:
-            L.append(f"- {label}: {val}" + (f" (rank #{rank})" if rank is not None else ""))
+        if val is None:
+            continue
+        parts = [f"{val}"]
+        if rank is not None:
+            parts.append(f"rank #{rank} of 282")
+        if eng_val is not None:
+            parts.append(f"England avg {eng_val}")
+        L.append(f"- {label}: {'; '.join(parts)} ({src})")
+    L.append("- Note: crime per 1,000 residents is inflated in city/town centres by commuters, shoppers and nightlife (counted in offences, not residents).")
     L.append("")
-    L.append("## Financial health")
+
+    L.append("## Financial health (benchmarked)")
     if d.get("severity", 0) >= 2:
         L.append(f"- Distress: {d.get('distress_status')}")
         if d.get("is_efs") and d.get("efs_amount_gbp_m") is not None:
@@ -64,33 +76,70 @@ def dossier(name, c):
     else:
         L.append("- Distress: no active Section 114 notice or EFS intervention")
     if b.get("per_resident") is not None:
-        L.append(f"- Borrowing per resident: £{round(b['per_resident']):,}"
+        parts = [f"£{round(b['per_resident']):,} per resident"]
+        if b.get("rank") is not None:
+            parts.append(f"rank #{b['rank']} of {be.get('n', 282)} highest")
+        if be.get("mean_per_resident") is not None:
+            parts.append(f"England avg £{round(be['mean_per_resident']):,}")
+        if be.get("median_per_resident") is not None:
+            parts.append(f"England median £{round(be['median_per_resident']):,}")
+        L.append(f"- Borrowing: {'; '.join(parts)}"
                  + (f" (total £{b['total_gbp_m']:.0f}m)" if b.get("total_gbp_m") is not None else ""))
+        L.append("  (MHCLG Q1 2026/27; outstanding loans incl. PWLB/commercial, mixing General Fund and Housing Revenue Account debt — part is rent-serviced.)")
     L.append("")
+
     spends = money_rows(c)
     if spends:
         L.append("## Biggest service budgets (£ per resident)")
         for svc, per in spends:
             L.append(f"- {svc}: £{round(per):,}" if per is not None else f"- {svc}: n/a")
         L.append("")
+
+    tvs = (c.get("talk_vs_spend") or {}).get("topics") or []
+    if tvs:
+        gap = max(tvs, key=lambda t: abs((t.get("spend_pct") or 0) - (t.get("discussion_pct") or 0)))
+        L.append("## Committee scrutiny vs budget")
+        L.append(f"- Biggest talk-vs-spend gap: {gap['topic']} takes {gap['spend_pct']:.0f}% of gross spend "
+                 f"but {gap['discussion_pct']:.0f}% of committee debate.")
+        if re.search(r"education|children", gap.get("topic", ""), re.I):
+            L.append("  (Education gross spend includes the ring-fenced Dedicated Schools Grant paid straight "
+                     "through to schools, which committees do not control; treat the gap as indicative.)")
+        L.append("")
+
     contracts = c.get("contracts") or []
     if contracts:
-        L.append("## Largest published contract awards")
+        L.append("## Largest published contract awards (Contracts Finder, 2023–2026)")
         for r in contracts[:5]:
             val = r.get("value_gbp")
             val_s = f"£{val/1_000_000:.1f}m" if val else "n/a"
-            L.append(f"- {r.get('supplier')}: {val_s} across {r.get('n')} award(s)")
+            n = int(r.get("n") or 0)
+            L.append(f"- {r.get('supplier')}: {val_s} across "
+                     f"{'1 award' if n == 1 else str(n) + ' awards'}"
+                     + (f" (latest {r.get('latest')})" if r.get("latest") else ""))
         L.append("")
-    L.append("## Primary sources")
-    L.append(f"- Full interactive profile: {SITE_URL}/?council={name.replace(' ', '%20')}#tab-council")
-    L.append(f"- Council committee minutes: https://www.google.com/search?q={name.replace(' ', '+')}+council+committee+minutes")
-    L.append(f"- Local crime statistics: https://www.police.uk/")
-    L.append(f"- Town-hall scrutiny news: https://news.google.com/search?q={name.replace(' ', '+')}+council+scrutiny+budget")
-    L.append("")
-    L.append("## Suggested use")
-    L.append("Ask an AI: \"Using only these verified figures, give me three sharp questions "
-             "to put to my councillor, name the single biggest financial risk, and compare "
-             "local services with the England average.\"")
+
+    official = c.get("official_links") or []
+    news = c.get("reading_links") or []
+    if official or news:
+        L.append("## Primary sources")
+        L.append(f"- Full interactive profile: {SITE_URL}/?council={name.replace(' ', '%20')}#tab-council")
+        for l in official:
+            L.append(f"- {l['title']}: {l['url']}")
+        for l in news:
+            L.append(f"- {l['title']} ({l['source']}): {l['url']}")
+        L.append("")
+
+    L.append("## Ask")
+    L.append("You are advising a local resident on this council. Using ONLY the verified figures and "
+             "England benchmarks above:")
+    L.append("1. Give three sharp, specific questions I can put to my councillor at their next surgery, "
+             "grounded in the gap between this council and the England average or in its debt rank.")
+    L.append("2. Identify the single biggest fiscal or governance risk visible in these figures, "
+             "contrasting debt, budget concentration and outcomes against the benchmarks.")
+    L.append("3. Summarise how this area compares with England overall, and flag where the "
+             "commuter-inflation or schools-grant caveats apply.")
+    L.append("If a question needs data not provided here (such as usable reserves or inspection grades), "
+             "say explicitly what is missing rather than guessing.")
     return "\n".join(L) + "\n"
 
 

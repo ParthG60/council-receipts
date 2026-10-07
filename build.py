@@ -413,6 +413,46 @@ def load_contracts():
     return out
 
 
+def load_portals():
+    """{ons_code: {portal_url, official_name}} from data_england/council_portals.csv."""
+    df = read_csv_optional(ENG_DIR / "council_portals.csv")
+    if df is None:
+        return {}
+    out = {}
+    for _, r in df.iterrows():
+        out[r["ons_code"]] = {
+            "portal_url": r.get("portal_url") if isinstance(r.get("portal_url"), str) else None,
+            "official_name": r.get("official_name") if isinstance(r.get("official_name"), str) else None,
+        }
+    return out
+
+
+def borrowing_england(borrowing, population):
+    """England borrowing benchmarks + per-council rank (1 = most indebted)."""
+    per = {}
+    for code, b in borrowing.items():
+        pop = population.get(code)
+        if b.get("total_gbp_m") is not None and pop:
+            per[code] = b["total_gbp_m"] * 1_000_000 / pop
+    if not per:
+        return {}, {}
+    total_gbp = sum(borrowing[c]["total_gbp_m"] for c in per) * 1_000_000
+    total_pop = sum(population[c] for c in per)
+    vals = sorted(per.values())
+    n = len(vals)
+    median = vals[n // 2] if n % 2 else (vals[n // 2 - 1] + vals[n // 2]) / 2
+    agg = {
+        "mean_per_resident": round(total_gbp / total_pop),
+        "median_per_resident": round(median),
+        "total_gbp_bn": round(total_gbp / 1_000_000_000, 1),
+        "n": n,
+    }
+    # rank 1 = highest debt per resident
+    ranked = sorted(per.items(), key=lambda kv: -kv[1])
+    ranks = {code: i for i, (code, _) in enumerate(ranked, 1)}
+    return agg, ranks
+
+
 def tier_bucket(la_class):
     """Map an RSX class to a comparison tier for party aggregates."""
     if la_class in ("UA", "MD", "LB"):
@@ -435,9 +475,12 @@ def main():
     control = load_control()                                   # ons -> {...}
     borrowing = load_borrowing()                               # ons -> {total_gbp_m}
     contracts = load_contracts()                               # ons -> [suppliers]
+    portal_by_ons = load_portals()                             # ons -> official committee portal
 
     pop_df = read_csv_optional(ENG_DIR / "population_all.csv")
     population = dict(zip(pop_df["ons_code"], pop_df["population"])) if pop_df is not None else {}
+
+    borrow_eng, borrow_rank = borrowing_england(borrowing, population)
 
     # Shire District -> Parent County & Authority Class lookup
     lad2cty_df = read_csv_optional(ENG_DIR / "lad_to_county_2023.csv")
@@ -732,24 +775,36 @@ def main():
         if reading_links is not None:
             rl = reading_links[reading_links["council"] == cname].head(3)
             links = rl[["title", "url", "source"]].to_dict("records")
-        if not links:
-            links = [
-                {
-                    "title": f"Latest local news & reporting on {cname} Council",
-                    "url": f"https://news.google.com/search?q={cname.replace(' ', '+')}+council&hl=en-GB&gl=GB&ceid=GB:en",
-                    "source": "Google News UK",
-                },
-                {
-                    "title": f"BBC News coverage for {cname} Council",
-                    "url": f"https://www.bbc.co.uk/search?q={cname.replace(' ', '+')}+council&filter=news",
-                    "source": "BBC News",
-                },
-                {
-                    "title": f"Council Gateway meeting minutes & records for {cname}",
-                    "url": f"https://councilgateway.poteris.co.uk/",
-                    "source": "Council Gateway",
-                },
-            ]
+
+        # Official records: direct links to the council's own democratic portal and
+        # national statutory bodies. Replaces the old generic Google/BBC searches.
+        meta = portal_by_ons.get(code) or {}
+        off_name = meta.get("official_name") or f"{cname} Council"
+        official_links = []
+        if meta.get("portal_url"):
+            official_links.append({
+                "title": f"{cname} committee meetings, agendas & minutes (official)",
+                "url": meta["portal_url"],
+                "source": "Council",
+            })
+        official_links += [
+            {
+                "title": f"{cname} contract awards on Contracts Finder",
+                "url": "https://www.contractsfinder.service.gov.uk/Search/Results?&searchTerm="
+                       + off_name.replace(" ", "+") + "&sort=relevance",
+                "source": "Contracts Finder",
+            },
+            {
+                "title": f"Ombudsman decisions about {cname} Council",
+                "url": "https://www.lgo.org.uk/decisions",
+                "source": "LGSCO",
+            },
+            {
+                "title": f"Recorded crime & policing in {cname}",
+                "url": "https://www.police.uk/",
+                "source": "Police.uk",
+            },
+        ]
 
         raw_class = la_class_raw.get(code, "UA" if r["tier"] == "lower" and code not in parent_county_map else "SD")
 
@@ -760,6 +815,7 @@ def main():
 
         out_councils[cname] = {
             "id": r["council_id"], "ons_code": code, "tier": r["tier"],
+            "name": cname,
             "la_class": raw_class,
             "la_class_label": CLASS_LABELS.get(raw_class, "Local Authority"),
             "parent_county": parent_county_map.get(code),
@@ -781,7 +837,10 @@ def main():
             "qol": qol_by_code.get(code),
             "financial_distress": distress_by_code.get(code),
             "reading_links": links,
-            "borrowing": ({"total_gbp_m": bor["total_gbp_m"], "per_resident": debt_per_resident}
+            "official_links": official_links,
+            "portal_url": (portal_by_ons.get(code) or {}).get("portal_url"),
+            "borrowing": ({"total_gbp_m": bor["total_gbp_m"], "per_resident": debt_per_resident,
+                           "rank": borrow_rank.get(code)}
                           if bor and bor.get("total_gbp_m") is not None else None),
             "contracts": contracts.get(code),
         }
@@ -797,6 +856,7 @@ def main():
         "money_median_per_resident": money_weighted_avg,
         "finance_topics_england": ft_england,
         "qol_england": qol_england,
+        "borrowing_england": borrow_eng,
         "distress_watchlist": distress_watchlist,
         "age_bands_mode": age_mode,
         "age_bands_order": AGE_BAND_ORDER,

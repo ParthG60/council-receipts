@@ -1455,6 +1455,26 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
   border: 1.5px solid var(--ink);
   padding: 14px 16px;
 }
+.stat-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.stat-header .stat-label { margin-bottom: 0; }
+.stat-corner {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--stamp);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 2px 7px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 .stat-label {
   font-family: var(--mono);
   font-size: 0.64rem;
@@ -1486,6 +1506,20 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
   color: var(--ink-soft);
   margin-top: 8px;
 }
+.contracts-window {
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+.links-subhead {
+  list-style: none;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 14px 0 4px;
+}
+.links-subhead:first-child { margin-top: 0; }
 .contracts-note {
   font-size: 0.78rem;
   color: var(--ink-soft);

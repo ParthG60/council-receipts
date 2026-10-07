@@ -515,39 +515,85 @@ function renderSmartLinks(c) {
 // own ChatGPT / Claude to interrogate their council's numbers.
 function buildCitizenBriefing(c) {
   const q = c.qol || {};
+  const eng = DATA.qol_england || {};
   const d = c.financial_distress || {};
   const b = c.borrowing || {};
+  const be = DATA.borrowing_england || {};
   const tvs = (c.talk_vs_spend && c.talk_vs_spend.topics) || [];
   const gap = tvs.slice().sort((a, b2) => Math.abs(b2.spend_pct - b2.discussion_pct) - Math.abs(a.spend_pct - a.discussion_pct))[0];
+  const name = c.name || currentCouncilName || "this council";
   const L = [];
-  L.push(`# Citizen briefing: ${c.name} (${c.ons_code || "n/a"})`);
+  L.push(`# Citizen briefing: ${name} (${c.ons_code || "n/a"})`);
   L.push(`- Tier: ${c.la_class_label || c.tier || "n/a"}${c.parent_county ? " (part of " + c.parent_county + ")" : ""}`);
   L.push(`- Political control: ${c.party_full || c.party || "n/a"}`);
   L.push(`- Population: ${c.population != null ? c.population.toLocaleString("en-GB") : "n/a"}`);
   L.push("");
-  L.push("## Outcomes (national rank out of 282; rank #1 = best)");
+
+  L.push("## Outcomes vs England (rank out of 282; #1 = best)");
   const qrow = [
-    ["Life expectancy (yrs)", q.life_expectancy, q.life_expectancy_rank],
-    ["GCSE Attainment 8 (pts)", q.attainment8, q.attainment8_rank],
-    ["Rent affordability (% of pay)", q.rent_affordability, q.rent_affordability_rank],
-    ["Child poverty (%)", q.child_poverty_pct, q.child_poverty_rank],
-    ["Claimant rate (%)", q.claimant_rate_pct, q.claimant_rate_rank],
-    ["Crime per 1,000", q.crime_per_1000, q.crime_rank],
+    ["Life expectancy (yrs)", q.life_expectancy, q.life_expectancy_rank, eng.life_expectancy, "ONS 2025"],
+    ["GCSE Attainment 8 (pts)", q.attainment8, q.attainment8_rank, eng.attainment8, "DfE 2023/24"],
+    ["Rent affordability (% of pay)", q.rent_affordability, q.rent_affordability_rank, eng.rent_affordability, "ONS PIPR/ASHE"],
+    ["Child poverty (%)", q.child_poverty_pct, q.child_poverty_rank, eng.child_poverty_pct, "DWP"],
+    ["Claimant rate (%)", q.claimant_rate_pct, q.claimant_rate_rank, eng.claimant_rate_pct, "Nomis 2026"],
+    ["Crime per 1,000", q.crime_per_1000, q.crime_rank, eng.crime_per_1000, "ONS CSP 2024"],
   ];
-  qrow.forEach(([label, val, rank]) => { if (val != null) L.push(`- ${label}: ${val}${rank != null ? ` (rank #${rank})` : ""}`); });
+  qrow.forEach(([label, val, rank, engVal, src]) => {
+    if (val == null) return;
+    const parts = [`${val}`];
+    if (rank != null) parts.push(`rank #${rank} of 282`);
+    if (engVal != null) parts.push(`England avg ${engVal}`);
+    L.push(`- ${label}: ${parts.join("; ")} (${src})`);
+  });
+  L.push("- Note: crime per 1,000 residents is inflated in city/town centres by commuters, shoppers and nightlife who are counted in offences but not in residents.");
   L.push("");
-  L.push("## Financial health");
-  L.push(`- Status: ${d.severity >= 2 ? d.distress_status : "No active S114 / EFS intervention"}`);
+
+  L.push("## Financial health (benchmarked)");
+  L.push(`- Distress: ${d.severity >= 2 ? d.distress_status : "No active Section 114 notice or EFS intervention"}`);
   if (d.is_efs && d.efs_amount_gbp_m != null) L.push(`- Exceptional Financial Support: £${d.efs_amount_gbp_m}m`);
-  if (b.per_resident != null) L.push(`- Borrowing per resident: £${Math.round(b.per_resident).toLocaleString("en-GB")}`);
-  if (gap) L.push(`- Biggest talk-vs-spend gap: ${gap.topic} takes ${gap.spend_pct.toFixed(0)}% of the budget but ${gap.discussion_pct.toFixed(0)}% of committee debate`);
+  if (b.per_resident != null) {
+    const parts = [`£${Math.round(b.per_resident).toLocaleString("en-GB")} per resident`];
+    if (b.rank != null) parts.push(`rank #${b.rank} of ${be.n || 282} highest`);
+    if (be.mean_per_resident != null) parts.push(`England avg £${Math.round(be.mean_per_resident).toLocaleString("en-GB")}`);
+    if (be.median_per_resident != null) parts.push(`England median £${Math.round(be.median_per_resident).toLocaleString("en-GB")}`);
+    L.push(`- Borrowing: ${parts.join("; ")}${b.total_gbp_m != null ? ` (total £${Math.round(b.total_gbp_m).toLocaleString("en-GB")}m)` : ""}`);
+    L.push("  (MHCLG Q1 2026/27. Total outstanding loans incl. PWLB/commercial; mixes General Fund and Housing Revenue Account debt, so partly rent-serviced.)");
+  }
+  if (!(d.is_efs) && b.per_resident == null) L.push("- No reserves, debt-servicing cost or schools-deficit figures are included here, so 'financial risk' cannot be measured directly from these numbers.");
   L.push("");
+
+  if (gap) {
+    L.push("## Committee scrutiny vs budget");
+    L.push(`- Biggest talk-vs-spend gap: ${gap.topic} takes ${gap.spend_pct.toFixed(0)}% of gross spend but ${gap.discussion_pct.toFixed(0)}% of committee debate.`);
+    if (gap.topic && /education|children/i.test(gap.topic)) {
+      L.push("  (Education gross spend includes the ring-fenced Dedicated Schools Grant paid straight through to schools, which committees do not control. Treat the gap as indicative.)");
+    }
+    L.push("");
+  }
+
+  const contracts = c.contracts || [];
+  if (contracts.length) {
+    L.push("## Largest published contract awards (Contracts Finder, 2023–2026)");
+    contracts.slice(0, 5).forEach((r) => {
+      const n = Math.round(r.n);
+      L.push(`- ${r.supplier}: £${((r.value_gbp || 0) / 1e6).toFixed(1)}m across ${n === 1 ? "1 award" : n + " awards"}${r.latest ? ` (latest ${r.latest})` : ""}`);
+    });
+    L.push("");
+  }
+
+  const official = c.official_links || [];
+  if (official.length) {
+    L.push("## Primary sources");
+    official.forEach((l) => L.push(`- ${l.title}: ${l.url}`));
+    L.push("");
+  }
+
   L.push("## Ask");
-  L.push("You are advising a resident on their local council. Using ONLY the verified figures above:");
-  L.push("1. Give three sharp questions I could put to my councillor at their next surgery.");
-  L.push("2. Name the single biggest financial risk the council faces.");
-  L.push("3. Say how local services here compare with England overall.");
-  L.push("If something is not in the data, say so rather than guessing.");
+  L.push("You are advising a local resident on this council. Using ONLY the verified figures and England benchmarks above:");
+  L.push("1. Give three sharp, specific questions I can put to my councillor at their next surgery, grounded in the gap between this council and the England average or in its debt rank.");
+  L.push("2. Identify the single biggest fiscal or governance risk visible in these figures, contrasting debt, budget concentration and outcomes against the benchmarks.");
+  L.push("3. Summarise how this area compares with England overall, and flag where the commuter-inflation or schools-grant caveats apply.");
+  L.push("If a question needs data not provided here (such as usable reserves or Ofsted/inspection grades), say explicitly what is missing rather than guessing.");
   return L.join("\n");
 }
 
@@ -689,14 +735,36 @@ function renderBorrowing(c) {
   const panel = el("panel-borrowing");
   showPanel("panel-borrowing", !!b);
   if (!b) return;
-  const median = medianPerResident();
+  const eng = DATA.borrowing_england || {};
+  const engAvg = eng.mean_per_resident;
+  const engMed = eng.median_per_resident;
+  const rank = b.rank;
+  const rankTxt = rank != null ? `Rank #${rank} of ${eng.n || 282} highest` : "";
+  const engLine = [
+    rankTxt,
+    engAvg != null ? `England avg £${Math.round(engAvg).toLocaleString("en-GB")}` : "",
+    engMed != null ? `median £${Math.round(engMed).toLocaleString("en-GB")}` : "",
+  ].filter(Boolean).join(" · ");
   const cards = [
-    { label: "Total outstanding debt", value: fmtGbpM(b.total_gbp_m), sub: "all loan & securities categories" },
-    { label: "Debt per resident", value: b.per_resident != null ? "£" + Math.round(b.per_resident).toLocaleString("en-GB") : "—", sub: median != null ? `England median £${Math.round(median).toLocaleString("en-GB")}` : "" },
+    {
+      label: "Total outstanding debt",
+      value: fmtGbpM(b.total_gbp_m),
+      corner: engAvg != null ? `England avg £${Math.round(engAvg).toLocaleString("en-GB")}/resident` : "",
+      sub: "all loan & securities categories (MHCLG)",
+    },
+    {
+      label: "Debt per resident",
+      value: b.per_resident != null ? "£" + Math.round(b.per_resident).toLocaleString("en-GB") : "—",
+      corner: rank != null ? `Rank #${rank} of ${eng.n || 282} highest` : "",
+      sub: engLine,
+    },
   ];
   el("borrowing-body").innerHTML = cards.map((card) => `
     <div class="stat-card">
-      <div class="stat-label">${card.label}</div>
+      <div class="stat-header">
+        <span class="stat-label">${card.label}</span>
+        ${card.corner ? `<span class="stat-corner">${card.corner}</span>` : ""}
+      </div>
       <div class="stat-value">${card.value}</div>
       <div class="stat-sub">${card.sub}</div>
     </div>`).join("");
@@ -713,21 +781,24 @@ function renderContracts(c) {
   showPanel("panel-contracts", !!(rows && rows.length));
   if (!rows || !rows.length) return;
   const total = rows.reduce((s, r) => s + (r.value_gbp || 0), 0);
-  const body = rows.map((r) => `
+  const body = rows.map((r) => {
+    const n = Math.round(r.n);
+    return `
     <tr>
       <td><a href="${contractsFinderUrl(r.supplier)}" target="_blank" rel="noopener">${r.supplier}</a></td>
       <td class="num-cell">${fmtGbpM((r.value_gbp || 0) / 1_000_000)}</td>
-      <td class="num-cell">${r.n}</td>
+      <td class="num-cell">${n === 1 ? "1 award" : `${n} awards`}</td>
       <td class="num-cell">${r.latest ? r.latest.replace(/-/g, "/") : "—"}</td>
-    </tr>`).join("");
+    </tr>`;
+  }).join("");
   const councilQuery = currentCouncilName || "";
   el("contracts-body").innerHTML = `
     <table class="league contracts-table">
-      <thead><tr><th>Supplier</th><th class="num-th">Awarded value</th><th class="num-th">Contracts</th><th class="num-th">Latest</th></tr></thead>
+      <thead><tr><th>Supplier</th><th class="num-th">Awarded value</th><th class="num-th">Awards</th><th class="num-th">Latest award</th></tr></thead>
       <tbody>${body}</tbody>
     </table>
-    <p class="contracts-total">Combined value of the largest awards shown: <strong>${fmtGbpM(total / 1_000_000)}</strong></p>
-    <p class="contracts-note">Click a supplier to search all their awards on <a href="https://www.contractsfinder.service.gov.uk/Search" target="_blank" rel="noopener">Contracts Finder</a>, the UK government's public register of tenders and contract awards. <a href="${contractsFinderUrl(councilQuery)}" target="_blank" rel="noopener">See all ${councilQuery} awards →</a></p>`;
+    <p class="contracts-total">Combined value of the largest awards shown: <strong>${fmtGbpM(total / 1_000_000)}</strong> <span class="contracts-window">(awards published 2023–2026)</span></p>
+    <p class="contracts-note">Largest published awards won by each supplier from <strong>${councilQuery} Council</strong> on Contracts Finder, the UK government's public register. Values are the total awarded across each supplier's notices in the window and can include multi-year frameworks. Click a supplier to see their notices, or <a href="${contractsFinderUrl(councilQuery + " Council")}" target="_blank" rel="noopener">see all ${councilQuery} awards →</a></p>`;
 }
 
 // ------------------------------------------------- ombudsman watchdog ---
@@ -1229,12 +1300,20 @@ function renderQoL(c) {
 }
 
 function renderReadingLinks(c) {
-  const hasData = c.reading_links && c.reading_links.length;
-  showPanel("panel-links", !!hasData);
-  if (!hasData) return;
-  el("reading-links").innerHTML = c.reading_links
-    .map((l) => `<li><a href="${l.url}" target="_blank" rel="noopener">${l.title}</a><span class="source-tag">${l.source}</span></li>`)
-    .join("");
+  const official = c.official_links || [];
+  const news = c.reading_links || [];
+  showPanel("panel-links", !!(official.length || news.length));
+  const li = (l, badge) => `<li><a href="${l.url}" target="_blank" rel="noopener">${l.title}</a><span class="source-tag">${l.source}</span></li>`;
+  let html = "";
+  if (official.length) {
+    html += `<li class="links-subhead">Official records</li>`;
+    html += official.map((l) => li(l)).join("");
+  }
+  if (news.length) {
+    html += `<li class="links-subhead">Local coverage</li>`;
+    html += news.map((l) => li(l)).join("");
+  }
+  el("reading-links").innerHTML = html;
 }
 
 // ---------------------------------------------------- topic momentum ---
@@ -2025,7 +2104,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261006a")
+  fetch("data.json?v=20261007")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
