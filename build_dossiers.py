@@ -113,9 +113,12 @@ def dossier(name, c):
             val = r.get("value_gbp")
             val_s = f"£{val/1_000_000:.1f}m" if val else "n/a"
             n = int(r.get("n") or 0)
-            L.append(f"- {r.get('supplier')}: {val_s} across "
-                     f"{'1 award' if n == 1 else str(n) + ' awards'}"
-                     + (f" (latest {r.get('latest')})" if r.get("latest") else ""))
+            line = (f"- {r.get('supplier')}: {val_s} across "
+                    f"{'1 award' if n == 1 else str(n) + ' awards'}"
+                    + (f" (latest {r.get('latest')})" if r.get("latest") else ""))
+            if r.get("url"):
+                line += f" — {r['url']}"
+            L.append(line)
         L.append("")
 
     official = c.get("official_links") or []

@@ -1500,6 +1500,13 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
 .contracts-table { width: 100%; }
 .contracts-table a { color: var(--stamp); text-decoration: none; border-bottom: 1px solid transparent; }
 .contracts-table a:hover { border-bottom-color: var(--stamp); }
+.contract-title {
+  font-size: 0.68rem;
+  color: var(--ink-soft);
+  margin-top: 2px;
+  max-width: 42ch;
+  line-height: 1.25;
+}
 .contracts-total {
   font-family: var(--mono);
   font-size: 0.78rem;
@@ -1520,6 +1527,19 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
   margin: 14px 0 4px;
 }
 .links-subhead:first-child { margin-top: 0; }
+.tier-list {
+  margin: 10px 0 4px;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+.tier-list li {
+  font-size: 0.86rem;
+  line-height: 1.45;
+  padding-left: 14px;
+  border-left: 3px solid var(--stamp-soft, #ddd);
+}
 .contracts-note {
   font-size: 0.78rem;
   color: var(--ink-soft);

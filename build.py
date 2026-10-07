@@ -403,11 +403,15 @@ def load_contracts():
     for code, grp in df.groupby("ons_code"):
         recs = []
         for _, r in grp.sort_values("total_value_gbp", ascending=False).iterrows():
+            nid = r.get("top_notice_id")
             recs.append({
                 "supplier": r["supplier"],
                 "value_gbp": _f(r["total_value_gbp"]),
                 "n": int(r["n_contracts"]),
                 "latest": str(r["latest_award"]) if pd.notna(r["latest_award"]) else None,
+                "title": r.get("top_title") if isinstance(r.get("top_title"), str) else None,
+                "url": (f"https://www.contractsfinder.service.gov.uk/Published/Notice/{nid}"
+                        if isinstance(nid, str) and nid else None),
             })
         out[code] = recs
     return out
@@ -439,8 +443,8 @@ def _ratio(price, weekly_pay):
 
 
 def load_house_earnings(reg):
-    """{ons_code: house-price-to-earnings ratio} plus the England ratio.
-    Ratio = HM Land Registry average house price / (ASHE median full-time weekly pay x 52).
+    """{ons_code: {ratio, price}} plus the England record.
+    ratio = HM Land Registry average house price / (ASHE median full-time weekly pay x 52).
     Primary source data_england/profile_all.csv; legacy data/profile.csv (by name) fills gaps."""
     out, eng = {}, None
     pa = read_csv_optional(ENG_DIR / "profile_all.csv")
@@ -448,7 +452,8 @@ def load_house_earnings(reg):
         for _, r in pa.iterrows():
             v = _ratio(r.get("median_house_price"), r.get("median_ft_pay"))
             if v is not None:
-                out[r["ons_code"]] = v
+                price = _f(r.get("median_house_price"))
+                out[r["ons_code"]] = {"ratio": v, "price": round(price) if price else None}
     po = read_csv_optional(DATA_DIR / "profile.csv")
     if po is not None:
         name2code = {r["name"]: code for code, r in reg.items()}
@@ -456,12 +461,14 @@ def load_house_earnings(reg):
             v = _ratio(r.get("median_house_price"), r.get("median_ft_pay"))
             if v is None:
                 continue
+            price = _f(r.get("median_house_price"))
+            rec = {"ratio": v, "price": round(price) if price else None}
             if r["council"] == "England":
-                eng = v
+                eng = rec
             else:
                 code = name2code.get(r["council"])
                 if code and code not in out:
-                    out[code] = v
+                    out[code] = rec
     return out, eng
 
 
@@ -625,9 +632,16 @@ def main():
     # house-price-to-earnings ratio (HPI average price / ASHE annual full-time pay)
     house_earn, house_earn_eng = load_house_earnings(reg)
     for code in qol_by_code:
-        qol_by_code[code]["house_earnings"] = house_earn.get(code)
+        rec = house_earn.get(code) or {}
+        qol_by_code[code]["house_earnings"] = rec.get("ratio")
+        qol_by_code[code]["house_price"] = rec.get("price")
+    # rank 1 = most affordable (lowest ratio)
+    for i, (code, _) in enumerate(sorted(house_earn.items(), key=lambda kv: kv[1]["ratio"]), 1):
+        if code in qol_by_code:
+            qol_by_code[code]["house_earnings_rank"] = i
     if qol_england:
-        qol_england["house_earnings"] = house_earn_eng
+        qol_england["house_earnings"] = (house_earn_eng or {}).get("ratio")
+        qol_england["house_price"] = (house_earn_eng or {}).get("price")
 
     distress_df = read_csv_optional(ENG_DIR / "financial_distress.csv")
     distress_by_code = {}

@@ -413,9 +413,13 @@ function renderCouncil(name) {
   renderBorrowing(c);
   renderContracts(c);
   renderQoL(c);
-  renderSmartLinks(c);
   renderDocumentSearch(c);
   renderTaxonomyTable();
+  const dl = el("dossier-link");
+  if (dl) {
+    if (c.ons_code) { dl.href = `dossiers/${c.ons_code}.md`; dl.style.display = ""; }
+    else { dl.style.display = "none"; }
+  }
 }
 
 // ---------------------------------------------- standout benchmark flags ---
@@ -462,6 +466,13 @@ function renderStandout(c) {
   if (q.child_poverty_rank != null && q.child_poverty_rank >= QOL_N * 0.8)
     badges.push({ cls: "bad", icon: "🚩", text: `High child poverty: ${q.child_poverty_pct}% (#${q.child_poverty_rank})` });
 
+  // House price vs local earnings (rank 1 = most affordable).
+  if (q.house_earnings != null && q.house_earnings_rank != null) {
+    const priceTxt = q.house_price != null ? `£${Math.round(q.house_price).toLocaleString("en-GB")} · ` : "";
+    if (q.house_earnings_rank >= QOL_N * 0.8) badges.push({ cls: "bad", icon: "🏠", text: `Expensive to buy: ${priceTxt}${q.house_earnings}× pay (#${q.house_earnings_rank})` });
+    else if (q.house_earnings_rank <= QOL_N * 0.2) badges.push({ cls: "good", icon: "🏠", text: `Affordable to buy: ${priceTxt}${q.house_earnings}× pay (#${q.house_earnings_rank})` });
+  }
+
   // Borrowing per resident vs national deciles.
   const b = c.borrowing;
   const { p10, p90 } = borrowingPercentiles();
@@ -483,31 +494,6 @@ function renderStandout(c) {
   box.querySelectorAll(".standout-badge[data-rubric]").forEach((pill) => {
     pill.addEventListener("click", () => openModal("rubric-modal"));
   });
-}
-
-// ------------------------------------------------------- smart links ---
-function smartLinks(c) {
-  const name = c.name || "";
-  const q = encodeURIComponent(`"${name}" (cabinet OR scrutiny OR budget OR audit OR "section 114")`);
-  const links = [
-    { title: "Search this council's committee meetings & minutes", url: `https://www.google.com/search?q=${encodeURIComponent(name + " council committee meetings minutes")}`, source: "minutes" },
-    { title: `Crime map & statistics for ${name}`, url: `https://www.police.uk/`, source: "police" },
-    { title: "Local planning applications register", url: `https://www.google.com/search?q=${encodeURIComponent(name + " council planning applications search")}`, source: "planning" },
-    { title: "Scrutiny, budget & audit news", url: `https://news.google.com/search?q=${q}`, source: "news" },
-    { title: "MHCLG local authority financial profile", url: `https://www.gov.uk/government/collections/local-authority-revenue-expenditure-and-financing`, source: "finance" },
-  ];
-  if (c.ons_code) links.push({ title: "Plain-text AI dossier (.md)", url: `dossiers/${c.ons_code}.md`, source: "ai" });
-  return links;
-}
-
-function renderSmartLinks(c) {
-  const links = smartLinks(c);
-  const panel = el("panel-links");
-  showPanel("panel-links", true);
-  if (!panel) return;
-  el("reading-links").innerHTML = links
-    .map((l) => `<li><a href="${l.url}" target="_blank" rel="noopener">${l.title}</a><span class="source-tag">${l.source}</span></li>`)
-    .join("");
 }
 
 // ------------------------------------------------ AI-native citizen brief ---
@@ -783,9 +769,11 @@ function renderContracts(c) {
   const total = rows.reduce((s, r) => s + (r.value_gbp || 0), 0);
   const body = rows.map((r) => {
     const n = Math.round(r.n);
+    const href = r.url || contractsFinderUrl(r.supplier);
+    const titleAttr = r.title ? ` title="${r.title.replace(/"/g, "&quot;")}"` : "";
     return `
     <tr>
-      <td><a href="${contractsFinderUrl(r.supplier)}" target="_blank" rel="noopener">${r.supplier}</a></td>
+      <td><a href="${href}" target="_blank" rel="noopener"${titleAttr}>${r.supplier}</a>${r.title ? `<div class="contract-title">${r.title}</div>` : ""}</td>
       <td class="num-cell">${fmtGbpM((r.value_gbp || 0) / 1_000_000)}</td>
       <td class="num-cell">${n === 1 ? "1 award" : `${n} awards`}</td>
       <td class="num-cell">${r.latest ? r.latest.replace(/-/g, "/") : "—"}</td>
@@ -798,7 +786,7 @@ function renderContracts(c) {
       <tbody>${body}</tbody>
     </table>
     <p class="contracts-total">Combined value of the largest awards shown: <strong>${fmtGbpM(total / 1_000_000)}</strong> <span class="contracts-window">(awards published 2023–2026)</span></p>
-    <p class="contracts-note">Largest published awards won by each supplier from <strong>${councilQuery} Council</strong> on Contracts Finder, the UK government's public register. Values are the total awarded across each supplier's notices in the window and can include multi-year frameworks. Click a supplier to see their notices, or <a href="${contractsFinderUrl(councilQuery + " Council")}" target="_blank" rel="noopener">see all ${councilQuery} awards →</a></p>`;
+    <p class="contracts-note">Each supplier links to its single largest award notice on Contracts Finder (the UK government's public register). The value is the total awarded to that supplier across its notices in the window and can include multi-year frameworks. <a href="${contractsFinderUrl(councilQuery + " Council")}" target="_blank" rel="noopener">See all ${councilQuery} awards →</a></p>`;
 }
 
 // ------------------------------------------------- ombudsman watchdog ---
@@ -1297,23 +1285,6 @@ function renderQoL(c) {
   }).join("");
 
   el("qol-grid").innerHTML = cardsHtml;
-}
-
-function renderReadingLinks(c) {
-  const official = c.official_links || [];
-  const news = c.reading_links || [];
-  showPanel("panel-links", !!(official.length || news.length));
-  const li = (l, badge) => `<li><a href="${l.url}" target="_blank" rel="noopener">${l.title}</a><span class="source-tag">${l.source}</span></li>`;
-  let html = "";
-  if (official.length) {
-    html += `<li class="links-subhead">Official records</li>`;
-    html += official.map((l) => li(l)).join("");
-  }
-  if (news.length) {
-    html += `<li class="links-subhead">Local coverage</li>`;
-    html += news.map((l) => li(l)).join("");
-  }
-  el("reading-links").innerHTML = html;
 }
 
 // ---------------------------------------------------- topic momentum ---
@@ -2105,7 +2076,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261007b")
+  fetch("data.json?v=20261007c")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
