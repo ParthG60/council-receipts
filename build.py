@@ -646,6 +646,24 @@ def main():
         qol_england["house_earnings"] = (house_earn_eng or {}).get("ratio")
         qol_england["house_price"] = (house_earn_eng or {}).get("price")
 
+    # Peer benchmark for the outcome cards/briefings: the median of the 283
+    # councils themselves (unweighted). The official England aggregate is skewed
+    # for some indicators (rent's national median rent is urban-weighted, so only
+    # ~16% of councils sit above it) and contradicts the ranks, which are computed
+    # across these same councils. Using the median keeps "vs England" monotonic
+    # with the rank. qol_england (official aggregates) stays for reference.
+    qol_benchmark = {}
+    if qol_df is not None:
+        council_qol = qol_df[qol_df["ons_code"] != "E92000001"]
+        for field in ["life_expectancy", "attainment8", "rent_affordability",
+                      "air_quality_pm25_pct", "child_poverty_pct", "claimant_rate_pct",
+                      "crime_per_1000"]:
+            if field in council_qol:
+                qol_benchmark[field] = round(float(council_qol[field].median()), 2)
+    he_vals = [r["ratio"] for r in house_earn.values() if r.get("ratio") is not None]
+    if he_vals:
+        qol_benchmark["house_earnings"] = round(float(pd.Series(he_vals).median()), 1)
+
     distress_df = read_csv_optional(ENG_DIR / "financial_distress.csv")
     distress_by_code = {}
     distress_watchlist = []
@@ -920,6 +938,7 @@ def main():
         "money_median_per_resident": money_weighted_avg,
         "finance_topics_england": ft_england,
         "qol_england": qol_england,
+        "qol_benchmark": qol_benchmark,
         "borrowing_england": borrow_eng,
         "distress_watchlist": distress_watchlist,
         "age_bands_mode": age_mode,

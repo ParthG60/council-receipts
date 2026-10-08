@@ -68,9 +68,9 @@ def main():
     check(all((r.get("poll_date") or "") >= today for r in upstream),
           "no already-closed election in data/elections.csv")
 
-    # the static methodology page must not drift from the baked England averages
+    # the static methodology page must not drift from the baked peer benchmarks
     html = (SITE / "index.html").read_text()
-    qeng = data.get("qol_england") or {}
+    qeng = data.get("qol_benchmark") or data.get("qol_england") or {}
     for sid, key, dp in [
         ("method-eng-le", "life_expectancy", 1), ("method-eng-att8", "attainment8", 1),
         ("method-eng-rent", "rent_affordability", 1), ("method-eng-aq", "air_quality_pm25_pct", 2),

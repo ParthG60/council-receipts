@@ -34,7 +34,7 @@ def money_rows(c):
 
 def dossier(name, c):
     q = c.get("qol") or {}
-    eng = DATA.get("qol_england") or {}
+    eng = DATA.get("qol_benchmark") or DATA.get("qol_england") or {}
     d = c.get("financial_distress") or {}
     b = c.get("borrowing") or {}
     be = DATA.get("borrowing_england") or {}
@@ -56,7 +56,7 @@ def dossier(name, c):
     L.append(f"- Population: {fmt_pop(c.get('population'))}")
     L.append("")
 
-    L.append(f"## Outcomes vs England (rank out of {N_COUNCILS}; #1 = best)")
+    L.append(f"## Outcomes vs median council (rank out of {N_COUNCILS}; #1 = best)")
     for label, val, rank, eng_val, src in [
         ("Life expectancy (years)", q.get("life_expectancy"), q.get("life_expectancy_rank"), eng.get("life_expectancy"), "ONS 2025"),
         ("GCSE Attainment 8 (points)", q.get("attainment8"), q.get("attainment8_rank"), eng.get("attainment8"), "DfE 2023/24"),
@@ -71,7 +71,7 @@ def dossier(name, c):
         if rank is not None:
             parts.append(f"rank #{rank} of {N_COUNCILS}")
         if eng_val is not None:
-            parts.append(f"England avg {eng_val}")
+            parts.append(f"median council {eng_val}")
         L.append(f"- {label}: {'; '.join(parts)} ({src})")
     L.append("- Note: crime per 1,000 residents is inflated in city/town centres by commuters, shoppers and nightlife (counted in offences, not residents).")
     L.append("")

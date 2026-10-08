@@ -452,10 +452,10 @@ function discretionaryGapP80() {
   return (_discGapP80 = gaps[Math.min(gaps.length - 1, Math.floor(gaps.length * 0.8))]);
 }
 
-// Keep the static methodology page's England averages in lockstep with the data,
-// so a data refresh can never leave a stale hardcoded figure on the page.
+// Keep the static methodology page's benchmark figures in lockstep with the data,
+// so a refresh can never leave a stale hardcoded number on the page.
 function updateMethodologyEngland() {
-  const e = (DATA && DATA.qol_england) || {};
+  const e = (DATA && (DATA.qol_benchmark || DATA.qol_england)) || {};
   const set = (id, v, dp) => {
     const n = document.getElementById(id);
     if (n && v != null) n.textContent = Number(v).toFixed(dp);
@@ -542,7 +542,7 @@ function renderStandout(c) {
 // own ChatGPT / Claude to interrogate their council's numbers.
 function buildCitizenBriefing(c) {
   const q = c.qol || {};
-  const eng = DATA.qol_england || {};
+  const eng = DATA.qol_benchmark || DATA.qol_england || {};
   const d = c.financial_distress || {};
   const b = c.borrowing || {};
   const be = DATA.borrowing_england || {};
@@ -561,7 +561,7 @@ function buildCitizenBriefing(c) {
   L.push(`- Population: ${c.population != null ? c.population.toLocaleString("en-GB") : "n/a"}`);
   L.push("");
 
-  L.push(`## Outcomes vs England (rank out of ${QOL_N}; #1 = best)`);
+  L.push(`## Outcomes vs median council (rank out of ${QOL_N}; #1 = best)`);
   const qrow = [
     ["Life expectancy (yrs)", q.life_expectancy, q.life_expectancy_rank, eng.life_expectancy, "ONS 2025"],
     ["GCSE Attainment 8 (pts)", q.attainment8, q.attainment8_rank, eng.attainment8, "DfE 2023/24"],
@@ -576,7 +576,7 @@ function buildCitizenBriefing(c) {
     if (val == null) return;
     const parts = [`${val}`];
     if (rank != null) parts.push(`rank #${rank} of ${QOL_N}`);
-    if (engVal != null) parts.push(`England avg ${engVal}`);
+    if (engVal != null) parts.push(`median council ${engVal}`);
     L.push(`- ${label}: ${parts.join("; ")} (${src})`);
   });
   L.push("- Note: crime per 1,000 residents is inflated in city/town centres by commuters, shoppers and nightlife who are counted in offences but not in residents.");
@@ -1136,7 +1136,7 @@ function renderQoL(c) {
   showPanel("panel-qol", !!q);
   if (!q) return;
 
-  const eng = DATA.qol_england || {};
+  const eng = DATA.qol_benchmark || DATA.qol_england || {};
 
   // 7 Outcome Indicators
   const items = [
@@ -1144,71 +1144,71 @@ function renderQoL(c) {
       label: "Life Expectancy",
       val: q.life_expectancy != null ? `${q.life_expectancy} yrs` : "—",
       rank: q.life_expectancy_rank,
-      eng: eng.life_expectancy != null ? `${eng.life_expectancy} yrs` : "81.9 yrs",
+      eng: eng.life_expectancy != null ? `${eng.life_expectancy} yrs` : "82.3 yrs",
       note: "Period life expectancy at birth across sexes (ONS 2025).",
       higherGood: true,
       valNum: q.life_expectancy,
-      engNum: eng.life_expectancy || 81.9,
+      engNum: eng.life_expectancy || 82.3,
     },
     {
       label: "GCSE Attainment 8",
       val: q.attainment8 != null ? `${q.attainment8} pts` : "—",
       rank: q.attainment8_rank,
-      eng: eng.attainment8 != null ? `${eng.attainment8} pts` : "46.1 pts",
+      eng: eng.attainment8 != null ? `${eng.attainment8} pts` : "45.5 pts",
       note: "Average GCSE Attainment 8 score per pupil across 8 subjects (DfE 2023/24).",
       higherGood: true,
       valNum: q.attainment8,
-      engNum: eng.attainment8 || 46.1,
+      engNum: eng.attainment8 || 45.5,
     },
     {
       label: "Rent Affordability",
       val: q.rent_affordability != null ? `${q.rent_affordability}%` : "—",
       rank: q.rent_affordability_rank,
-      eng: eng.rent_affordability != null ? `${eng.rent_affordability}%` : "31.0%",
+      eng: eng.rent_affordability != null ? `${eng.rent_affordability}%` : "32.7%",
       note: "Median private rent as a % of median gross full-time earnings (ONS PIPR/ASHE).",
       higherGood: false,
       valNum: q.rent_affordability,
-      engNum: eng.rent_affordability || 31.0,
+      engNum: eng.rent_affordability || 32.7,
     },
     {
       label: "Air Quality (PM2.5)",
       val: q.air_quality_pm25_pct != null ? `${q.air_quality_pm25_pct}%` : "—",
       rank: q.air_quality_rank,
-      eng: eng.air_quality_pm25_pct != null ? `${eng.air_quality_pm25_pct}%` : "5.3%",
+      eng: eng.air_quality_pm25_pct != null ? `${eng.air_quality_pm25_pct}%` : "5.2%",
       note: "Estimated % of adult all-cause mortality attributable to human-made fine particulate air pollution PM2.5 (Defra/OHID).",
       higherGood: false,
       valNum: q.air_quality_pm25_pct,
-      engNum: eng.air_quality_pm25_pct || 5.3,
+      engNum: eng.air_quality_pm25_pct || 5.2,
     },
     {
       label: "Child Poverty",
       val: q.child_poverty_pct != null ? `${q.child_poverty_pct}%` : "—",
       rank: q.child_poverty_rank,
-      eng: eng.child_poverty_pct != null ? `${eng.child_poverty_pct}%` : "19.8%",
+      eng: eng.child_poverty_pct != null ? `${eng.child_poverty_pct}%` : "16.7%",
       note: "Share of children aged under 16 living in families in relative low income (DWP).",
       higherGood: false,
       valNum: q.child_poverty_pct,
-      engNum: eng.child_poverty_pct || 19.8,
+      engNum: eng.child_poverty_pct || 16.7,
     },
     {
       label: "Claimant Rate",
       val: q.claimant_rate_pct != null ? `${q.claimant_rate_pct}%` : "—",
       rank: q.claimant_rate_rank,
-      eng: eng.claimant_rate_pct != null ? `${eng.claimant_rate_pct}%` : "4.0%",
+      eng: eng.claimant_rate_pct != null ? `${eng.claimant_rate_pct}%` : "3.1%",
       note: "Universal Credit / JSA claimants as a % of resident population aged 16-64 (Nomis July 2026).",
       higherGood: false,
       valNum: q.claimant_rate_pct,
-      engNum: eng.claimant_rate_pct || 4.0,
+      engNum: eng.claimant_rate_pct || 3.1,
     },
     {
       label: "Crime Rate",
       val: q.crime_per_1000 != null ? `${q.crime_per_1000}` : "—",
       rank: q.crime_rank,
-      eng: eng.crime_per_1000 != null ? `${eng.crime_per_1000}` : "89.5",
+      eng: eng.crime_per_1000 != null ? `${eng.crime_per_1000}` : "79.4",
       note: "Total recorded offences (excluding fraud) per 1,000 residents (ONS CSP 2024).",
       higherGood: false,
       valNum: q.crime_per_1000,
-      engNum: eng.crime_per_1000 || 89.5,
+      engNum: eng.crime_per_1000 || 79.4,
     },
   ];
 
@@ -1219,7 +1219,7 @@ function renderQoL(c) {
       const isBetter = item.higherGood ? diff > 0 : diff < 0;
       const sign = diff > 0 ? "+" : "";
       const cls = Math.abs(diff) < 0.2 ? "neutral" : isBetter ? "better" : "worse";
-      diffBadge = `<span class="qol-tag ${cls}">${sign}${diff.toFixed(1)} vs England</span>`;
+      diffBadge = `<span class="qol-tag ${cls}">${sign}${diff.toFixed(1)} vs median</span>`;
     }
     const rankTxt = item.rank != null ? `<span class="qol-rank-tag">Rank #${item.rank} of ${QOL_N}</span>` : "";
     return `
@@ -1229,7 +1229,7 @@ function renderQoL(c) {
           ${diffBadge}
         </div>
         <div class="qol-value">${item.val}</div>
-        <div class="qol-benchmark">${rankTxt} · England: <strong>${item.eng}</strong></div>
+        <div class="qol-benchmark">${rankTxt} · Median council: <strong>${item.eng}</strong></div>
         <div class="qol-sub">${item.note}</div>
       </div>`;
   }).join("");
@@ -1759,7 +1759,7 @@ let globalIndexPromise = null;
 
 function loadGlobalIndex() {
   if (globalIndexPromise) return globalIndexPromise;
-  globalIndexPromise = fetch("search_index_global.json?v=20261007g")
+  globalIndexPromise = fetch("search_index_global.json?v=20261007i")
     .then((r) => r.json())
     .then((d) => { globalIndex = d; return d; })
     .catch(() => { globalIndex = {}; return {}; });
@@ -1949,7 +1949,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261007g")
+  fetch("data.json?v=20261007i")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
