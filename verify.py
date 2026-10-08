@@ -68,6 +68,20 @@ def main():
     check(all((r.get("poll_date") or "") >= today for r in upstream),
           "no already-closed election in data/elections.csv")
 
+    # the static methodology page must not drift from the baked England averages
+    html = (SITE / "index.html").read_text()
+    qeng = data.get("qol_england") or {}
+    for sid, key, dp in [
+        ("method-eng-le", "life_expectancy", 1), ("method-eng-att8", "attainment8", 1),
+        ("method-eng-rent", "rent_affordability", 1), ("method-eng-aq", "air_quality_pm25_pct", 2),
+        ("method-eng-cp", "child_poverty_pct", 1), ("method-eng-claim", "claimant_rate_pct", 1),
+        ("method-eng-crime", "crime_per_1000", 1),
+    ]:
+        m = re.search(r'id="' + sid + r'">([^<]+)<', html)
+        val = qeng.get(key)
+        check(m is not None and val is not None and m.group(1).strip() == f"{float(val):.{dp}f}",
+              f"methodology England value {sid} matches data ({m.group(1).strip() if m else 'missing'})")
+
     # party_by_tier present and populated for the comparison tiers
     pbt = data.get("party_by_tier") or {}
     for tk in ("single", "district", "county"):

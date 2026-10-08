@@ -452,6 +452,23 @@ function discretionaryGapP80() {
   return (_discGapP80 = gaps[Math.min(gaps.length - 1, Math.floor(gaps.length * 0.8))]);
 }
 
+// Keep the static methodology page's England averages in lockstep with the data,
+// so a data refresh can never leave a stale hardcoded figure on the page.
+function updateMethodologyEngland() {
+  const e = (DATA && DATA.qol_england) || {};
+  const set = (id, v, dp) => {
+    const n = document.getElementById(id);
+    if (n && v != null) n.textContent = Number(v).toFixed(dp);
+  };
+  set("method-eng-le", e.life_expectancy, 1);
+  set("method-eng-att8", e.attainment8, 1);
+  set("method-eng-rent", e.rent_affordability, 1);
+  set("method-eng-aq", e.air_quality_pm25_pct, 2);
+  set("method-eng-cp", e.child_poverty_pct, 1);
+  set("method-eng-claim", e.claimant_rate_pct, 1);
+  set("method-eng-crime", e.crime_per_1000, 1);
+}
+
 function renderStandout(c) {
   const box = el("standout-badges");
   if (!box) return;
@@ -1937,6 +1954,7 @@ window.addEventListener("DOMContentLoaded", () => {
     .then((data) => {
       DATA = data;
       QOL_N = Object.keys(data.councils || {}).length || QOL_N;
+      updateMethodologyEngland();
       initCouncilSelect();
       initOmnibox();
       initModals();
