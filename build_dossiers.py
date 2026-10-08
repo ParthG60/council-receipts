@@ -145,9 +145,9 @@ def dossier(name, c):
 
     L.append("## Ask")
     L.append("You are advising a local resident on this council. Using ONLY the verified figures and "
-             "England benchmarks above:")
+             "peer benchmarks above (outcome comparisons are against the median English council, not the national aggregate):")
     L.append("1. Give three sharp, specific questions I can put to my councillor at their next surgery, "
-             "grounded in the gap between this council and the England average or in its debt rank.")
+             "grounded in the gap between this council and the median council or in its debt rank.")
     L.append("2. Identify the single biggest fiscal or governance risk visible in these figures, "
              "contrasting debt, budget concentration and outcomes against the benchmarks.")
     L.append("3. Summarise how this area compares with England overall, and flag where the "

@@ -621,8 +621,8 @@ function buildCitizenBriefing(c) {
   }
 
   L.push("## Ask");
-  L.push("You are advising a local resident on this council. Using ONLY the verified figures and England benchmarks above:");
-  L.push("1. Give three sharp, specific questions I can put to my councillor at their next surgery, grounded in the gap between this council and the England average or in its debt rank.");
+  L.push("You are advising a local resident on this council. Using ONLY the verified figures and peer benchmarks above (outcome comparisons are against the median English council, not the national aggregate):");
+  L.push("1. Give three sharp, specific questions I can put to my councillor at their next surgery, grounded in the gap between this council and the median council or in its debt rank.");
   L.push("2. Identify the single biggest fiscal or governance risk visible in these figures, contrasting debt, budget concentration and outcomes against the benchmarks.");
   L.push("3. Summarise how this area compares with England overall, and flag where the commuter-inflation or schools-grant caveats apply.");
   L.push("If a question needs data not provided here (such as usable reserves or Ofsted/inspection grades), say explicitly what is missing rather than guessing.");
