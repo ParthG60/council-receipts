@@ -46,6 +46,13 @@ def dossier(name, c):
     L.append(f"- Tier: {c.get('la_class_label') or c.get('tier') or 'n/a'}"
              + (f" (part of {c['parent_county']})" if c.get("parent_county") else ""))
     L.append(f"- Political control: {c.get('party_full') or c.get('party') or 'n/a'}")
+    ctrl = c.get("control") or {}
+    if ctrl.get("changed"):
+        L.append(f"- Control history: {ctrl.get('current')} since {ctrl.get('since')}"
+                 + (f" (previously {ctrl.get('previous')})" if ctrl.get("previous") else ""))
+    if c.get("election"):
+        e = c["election"]
+        L.append(f"- Upcoming election: {e.get('title')} — polls {e.get('poll_date')}")
     L.append(f"- Population: {fmt_pop(c.get('population'))}")
     L.append("")
 
@@ -98,18 +105,21 @@ def dossier(name, c):
 
     tvs = (c.get("talk_vs_spend") or {}).get("topics") or []
     if tvs:
-        gap = max(tvs, key=lambda t: abs((t.get("spend_pct") or 0) - (t.get("discussion_pct") or 0)))
+        discretionary = {"Housing & Planning", "Transport & Highways", "Climate & Environment",
+                         "Local Economy", "Health"}
+        pool = [t for t in tvs if t.get("topic") in discretionary] or tvs
+        gap = max(pool, key=lambda t: abs((t.get("spend_pct") or 0) - (t.get("discussion_pct") or 0)))
         L.append("## Committee scrutiny vs budget")
         L.append(f"- Biggest talk-vs-spend gap: {gap['topic']} takes {gap['spend_pct']:.0f}% of gross spend "
                  f"but {gap['discussion_pct']:.0f}% of committee debate.")
-        if re.search(r"education|children", gap.get("topic", ""), re.I):
-            L.append("  (Education gross spend includes the ring-fenced Dedicated Schools Grant paid straight "
-                     "through to schools, which committees do not control; treat the gap as indicative.)")
+        L.append("  (Note: English councils spend most of their budgets on statutory adult/children's social care "
+                 "and the ring-fenced schools grant, which committees do not set. The flag is drawn from "
+                 "discretionary services; treat it as indicative.)")
         L.append("")
 
     contracts = c.get("contracts") or []
     if contracts:
-        L.append("## Largest published contract awards (Contracts Finder, 2023–2026)")
+        L.append("## Largest published contract awards (Contracts Finder, 2025–2026)")
         for r in contracts[:5]:
             val = r.get("value_gbp")
             val_s = f"£{val/1_000_000:.1f}m" if val else "n/a"
@@ -141,7 +151,7 @@ def dossier(name, c):
     L.append("2. Identify the single biggest fiscal or governance risk visible in these figures, "
              "contrasting debt, budget concentration and outcomes against the benchmarks.")
     L.append("3. Summarise how this area compares with England overall, and flag where the "
-             "commuter-inflation or schools-grant caveats apply.")
+             "commuter-inflation, discretionary-services or schools-grant caveats apply.")
     L.append("If a question needs data not provided here (such as usable reserves or inspection grades), "
              "say explicitly what is missing rather than guessing.")
     return "\n".join(L) + "\n"

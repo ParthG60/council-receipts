@@ -586,6 +586,9 @@ def main():
                             eth_by_ons.setdefault(code, e)
 
     elections = read_csv_optional(DATA_DIR / "elections.csv")
+    if elections is not None:
+        # never advertise a poll that has already closed, even from a stale csv
+        elections = elections[elections["poll_date"].astype(str) >= pd.Timestamp.today().strftime("%Y-%m-%d")]
     reading_links = read_csv_optional(DATA_DIR / "reading_links.csv")
     age_bands = read_csv_optional(ENG_DIR / "age_bands_all.csv")
     if age_bands is None:

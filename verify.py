@@ -54,6 +54,20 @@ def main():
     check(data.get("league_table", {}).get("rows") and len(data["league_table"]["rows"]) == n_reg,
           f"league table has {n_reg} rows")
 
+    # contract awards must be recency-windowed (2025+) and deep-link to /Notice/{id}
+    contract_rows = [r for c in councils.values() for r in (c.get("contracts") or [])]
+    check(all((r.get("latest") or "9999") >= "2025-01-01" for r in contract_rows),
+          "all contract awards dated 2025 or later")
+    check(all("/Notice/" in (r.get("url") or "") for r in contract_rows),
+          "contract links point at human /Notice/{id} pages")
+
+    # no stale elections: every advertised poll must be today or later
+    today = __import__("datetime").date.today().isoformat()
+    upstream = __import__("csv").DictReader(
+        open(ROOT / "data" / "elections.csv", encoding="utf-8")) if (ROOT / "data" / "elections.csv").exists() else []
+    check(all((r.get("poll_date") or "") >= today for r in upstream),
+          "no already-closed election in data/elections.csv")
+
     # party_by_tier present and populated for the comparison tiers
     pbt = data.get("party_by_tier") or {}
     for tk in ("single", "district", "county"):

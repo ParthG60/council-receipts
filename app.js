@@ -427,6 +427,31 @@ function borrowingPercentiles() {
   return { p10: vals[Math.floor(vals.length * 0.1)], p90: vals[Math.floor(vals.length * 0.9)] };
 }
 
+// Statutory/demand-led services (children's education incl. the ring-fenced
+// Dedicated Schools Grant, and adult/children's social care) are determined by
+// national formula and statutory duty, so committee debate is structurally low
+// there. The talk-vs-spend flag therefore looks only at the council's genuinely
+// discretionary services.
+const DISCRETIONARY_TOPICS = new Set([
+  "Housing & Planning", "Transport & Highways", "Climate & Environment",
+  "Local Economy", "Health",
+]);
+
+let _discGapP80;
+function discretionaryGapP80() {
+  if (_discGapP80 !== undefined) return _discGapP80;
+  const gaps = [];
+  Object.values(DATA.councils).forEach((cc) => {
+    const tvs = (cc.talk_vs_spend && cc.talk_vs_spend.topics) || [];
+    const disc = tvs.filter((r) => DISCRETIONARY_TOPICS.has(r.topic))
+      .map((r) => Math.abs(r.spend_pct - r.discussion_pct));
+    if (disc.length) gaps.push(Math.max(...disc));
+  });
+  if (!gaps.length) return (_discGapP80 = null);
+  gaps.sort((a, b) => a - b);
+  return (_discGapP80 = gaps[Math.min(gaps.length - 1, Math.floor(gaps.length * 0.8))]);
+}
+
 function renderStandout(c) {
   const box = el("standout-badges");
   if (!box) return;
@@ -472,11 +497,19 @@ function renderStandout(c) {
     else if (b.per_resident <= p10) badges.push({ cls: "good", icon: "🟢", text: `Low debt: £${Math.round(b.per_resident).toLocaleString("en-GB")}/resident` });
   }
 
-  // Talk-vs-spend disconnect (the "receipts" check).
+  // Talk-vs-spend disconnect (the "receipts" check) — discretionary services only,
+  // and only when the gap is unusually large nationally (top 20%).
   const tvs = (c.talk_vs_spend && c.talk_vs_spend.topics) || [];
-  const gap = tvs.slice().sort((a, b2) => Math.abs(b2.spend_pct - b2.discussion_pct) - Math.abs(a.spend_pct - a.discussion_pct))[0];
-  if (gap && Math.abs(gap.spend_pct - gap.discussion_pct) >= 12)
-    badges.push({ cls: "warn", icon: "⚡", text: `${gap.topic}: ${gap.spend_pct.toFixed(0)}% of budget, ${gap.discussion_pct.toFixed(0)}% of debate` });
+  const disc = tvs.filter((r) => DISCRETIONARY_TOPICS.has(r.topic));
+  const gap = disc.slice().sort((a, b2) => Math.abs(b2.spend_pct - b2.discussion_pct) - Math.abs(a.spend_pct - a.discussion_pct))[0];
+  const p80 = discretionaryGapP80();
+  if (gap && p80 != null && Math.abs(gap.spend_pct - gap.discussion_pct) >= p80)
+    badges.push({ cls: "warn", icon: "⚡", text: `${gap.topic}: ${gap.spend_pct.toFixed(0)}% of spend, ${gap.discussion_pct.toFixed(0)}% of debate` });
+
+  // Recent change of political control — a governance signal worth surfacing.
+  const ctrl = c.control;
+  if (ctrl && ctrl.changed && ctrl.since_year >= 2025)
+    badges.push({ cls: "warn", icon: "🗳", text: `Control changed ${ctrl.since}: now ${ctrl.current}` });
 
   const shown = badges.slice(0, 5);
   box.innerHTML = shown.length
@@ -497,12 +530,17 @@ function buildCitizenBriefing(c) {
   const b = c.borrowing || {};
   const be = DATA.borrowing_england || {};
   const tvs = (c.talk_vs_spend && c.talk_vs_spend.topics) || [];
-  const gap = tvs.slice().sort((a, b2) => Math.abs(b2.spend_pct - b2.discussion_pct) - Math.abs(a.spend_pct - a.discussion_pct))[0];
+  const disc = tvs.filter((r) => DISCRETIONARY_TOPICS.has(r.topic));
+  const gap = (disc.length ? disc : tvs).slice().sort((a, b2) => Math.abs(b2.spend_pct - b2.discussion_pct) - Math.abs(a.spend_pct - a.discussion_pct))[0];
   const name = c.name || currentCouncilName || "this council";
   const L = [];
   L.push(`# Citizen briefing: ${name} (${c.ons_code || "n/a"})`);
   L.push(`- Tier: ${c.la_class_label || c.tier || "n/a"}${c.parent_county ? " (part of " + c.parent_county + ")" : ""}`);
   L.push(`- Political control: ${c.party_full || c.party || "n/a"}`);
+  if (c.control && c.control.changed)
+    L.push(`- Control history: ${c.control.current} since ${c.control.since}` + (c.control.previous ? " (previously " + c.control.previous + ")" : ""));
+  if (c.election)
+    L.push(`- Upcoming election: ${c.election.title} — polls ${c.election.poll_date}`);
   L.push(`- Population: ${c.population != null ? c.population.toLocaleString("en-GB") : "n/a"}`);
   L.push("");
 
@@ -544,15 +582,13 @@ function buildCitizenBriefing(c) {
   if (gap) {
     L.push("## Committee scrutiny vs budget");
     L.push(`- Biggest talk-vs-spend gap: ${gap.topic} takes ${gap.spend_pct.toFixed(0)}% of gross spend but ${gap.discussion_pct.toFixed(0)}% of committee debate.`);
-    if (gap.topic && /education|children/i.test(gap.topic)) {
-      L.push("  (Education gross spend includes the ring-fenced Dedicated Schools Grant paid straight through to schools, which committees do not control. Treat the gap as indicative.)");
-    }
+    L.push("  (English councils spend most of their budgets on statutory adult/children's social care and the ring-fenced schools grant, which committees do not set. The gap is drawn from discretionary services; treat it as indicative.)");
     L.push("");
   }
 
   const contracts = c.contracts || [];
   if (contracts.length) {
-    L.push("## Largest published contract awards (Contracts Finder, 2023–2026)");
+    L.push("## Largest published contract awards (Contracts Finder, 2025–2026)");
     contracts.slice(0, 5).forEach((r) => {
       const n = Math.round(r.n);
       L.push(`- ${r.supplier}: £${((r.value_gbp || 0) / 1e6).toFixed(1)}m across ${n === 1 ? "1 award" : n + " awards"}${r.latest ? ` (latest ${r.latest})` : ""}`);
@@ -699,7 +735,7 @@ function renderContracts(c) {
       <thead><tr><th>Supplier</th><th class="num-th">Awarded value</th><th class="num-th">Awards</th><th class="num-th">Latest award</th></tr></thead>
       <tbody>${body}</tbody>
     </table>
-    <p class="contracts-total">Combined value of the largest awards shown: <strong>${fmtGbpM(total / 1_000_000)}</strong> <span class="contracts-window">(awards published 2023–2026)</span></p>
+    <p class="contracts-total">Combined value of the largest awards shown: <strong>${fmtGbpM(total / 1_000_000)}</strong> <span class="contracts-window">(awards published 2025–2026)</span></p>
     <p class="contracts-note">Each supplier links to its single largest award notice on Contracts Finder (the UK government's public register). The value is the total awarded to that supplier across its notices in the window and can include multi-year frameworks. <a href="${contractsFinderUrl(councilQuery + " Council")}" target="_blank" rel="noopener">See all ${councilQuery} awards →</a></p>`;
 }
 
@@ -989,7 +1025,10 @@ function renderTalkVsSpend(c) {
 
   el("tvs-key").innerHTML = swatch(ACCENT, "Discussion share") + " &nbsp; " + swatch(SPEND_COLOR, "Spend share");
 
-  let caption = "Topics without a budget line excluded; minutes Oct 2024–Mar 2025 vs spend year 2024-25.";
+  const cw = (DATA && DATA.corpus_window && DATA.corpus_window.label) || "the last two years";
+  let caption = `Topics without a budget line excluded; minutes ${cw} vs spend year 2024-25. ` +
+    "English councils spend most of their budgets on statutory social care and the ring-fenced schools grant, " +
+    "which committees do not set — so debate concentrates on discretionary services (planning, highways, environment, regeneration).";
   if (c.talk_vs_spend.note) caption += " " + c.talk_vs_spend.note.charAt(0).toUpperCase() + c.talk_vs_spend.note.slice(1) + ".";
   el("tvs-caption").textContent = caption;
 
@@ -1703,7 +1742,7 @@ let globalIndexPromise = null;
 
 function loadGlobalIndex() {
   if (globalIndexPromise) return globalIndexPromise;
-  globalIndexPromise = fetch("search_index_global.json?v=20261007e")
+  globalIndexPromise = fetch("search_index_global.json?v=20261007g")
     .then((r) => r.json())
     .then((d) => { globalIndex = d; return d; })
     .catch(() => { globalIndex = {}; return {}; });
@@ -1893,7 +1932,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261007e")
+  fetch("data.json?v=20261007g")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;

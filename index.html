@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261007f">
+<link rel="stylesheet" href="style.css?v=20261007g">
 </head>
 <body>
 <div class="container">
@@ -111,7 +111,7 @@
         <h2>Who gets the money: largest contract awards <span class="prov prov-direct" title="Crown Commercial Service Contracts Finder (awarded contracts)">Direct record · Contracts Finder</span></h2>
         <p class="lede">Public bodies must publish contract awards above a value threshold. These are this council's biggest aggregated supplier awards as published to Contracts Finder — who is getting the money, and how much.</p>
         <div id="contracts-body"></div>
-        <p class="caption">Source: Crown Commercial Service Contracts Finder (awarded contracts published 2023–2026, matched to this council as the buyer). Values are the published award values and may reflect framework ceilings or multi-year terms; multi-supplier framework lots are excluded.</p>
+        <p class="caption">Source: Crown Commercial Service Contracts Finder (awarded contracts published 2025–2026, matched to this council as the buyer). Values are the published award values and may reflect framework ceilings or multi-year terms; multi-supplier framework lots are excluded.</p>
       </section>
 
       <section class="panel" id="panel-distress">
@@ -159,7 +159,7 @@
           <li><strong>Crime Rate:</strong> ONS Community Safety Partnerships (2024), recorded offences per 1,000 residents. England average: 89.2.</li>
           <li><strong>House / Earnings:</strong> HM Land Registry average house price ÷ ASHE median gross full-time annual pay (weekly × 52). Lower is more affordable. Ratio of a mean price to a median wage, so treat as an indicative affordability multiple, not an official ONS ratio.</li>
         </ul>
-        <p><strong>Standout flags.</strong> The pills under each council name are generated from national deciles: top/bottom 20% on crime, rent affordability, and child poverty; top/bottom 10% on borrowing per resident; plus any active Section 114 notice or Exceptional Financial Support, and the largest talk-vs-spend gap.</p>
+        <p><strong>Standout flags.</strong> The pills under each council name are generated from national benchmarks: top/bottom 20% on crime, rent affordability, child poverty and house price-to-earnings; top/bottom 10% on borrowing per resident; any active Section 114 notice or Exceptional Financial Support; the largest talk-vs-spend gap among <em>discretionary</em> services (statutory social care and schools excluded); and any change of political control since 2025.</p>
         <p><strong>Council tiers &amp; remits.</strong> Shire Districts (lower-tier councils) deliver Housing, Local Planning, Waste Collection, and Leisure. Upper-tier County Councils provide Education, Adult &amp; Children's Social Care, Public Health, and Highways. Unitary and London/Metropolitan Boroughs deliver all services under a single authority.</p>
         <p><strong>AI-native.</strong> Every council has a plain-text dossier at <code>dossiers/{ONS code}.md</code> and a one-click "copy citizen briefing" button, so you can point your own ChatGPT or Claude at verified numbers rather than a scraped page.</p>
         <p><strong>Limitations.</strong> Political control reflects current council composition from Open Council Data UK (2026). Some councils have incomplete Gateway minutes, so discussion panels are omitted while retaining finance and outcome metrics. Keyword classification counts what minutes mention, not debate quality or voting outcomes.</p>
@@ -333,7 +333,8 @@
         <tr><td>🟢 Low debt</td><td>Bottom 10% of outstanding borrowing per resident</td><td>MHCLG Quarterly Borrowing &amp; Investment</td></tr>
         <tr><td>⚠️ Section 114 notice</td><td>An active statutory spending-freeze notice</td><td>MHCLG intervention register</td></tr>
         <tr><td>⚡ Exceptional Financial Support</td><td>An active EFS capitalisation directive</td><td>MHCLG intervention register</td></tr>
-        <tr><td>⚡ Talk-vs-spend gap</td><td>Topic's budget share and discussion share differ by ≥ 12 percentage points</td><td>Derived: MHCLG outturn vs Gateway minutes</td></tr>
+        <tr><td>⚡ Talk-vs-spend gap</td><td>A <em>discretionary</em> service's spend share and discussion share differ by enough to be in the top 20% nationally (statutory children's and adult social care excluded — their budgets are formula-set and pass-through)</td><td>Derived: MHCLG outturn vs Gateway minutes</td></tr>
+        <tr><td>🗳 Control changed</td><td>The party or coalition in charge changed since 2025</td><td>Open Council Data UK compositions</td></tr>
       </tbody>
     </table>
     <p class="modal-foot">Thresholds are national deciles computed across all 283 councils. Spot an error? <a href="#" data-goto-feedback>Report a discrepancy</a>.</p>
@@ -371,6 +372,6 @@
 </div>
 
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" defer></script>
-<script src="app.js?v=20261007f" defer></script>
+<script src="app.js?v=20261007g" defer></script>
 </body>
 </html>
