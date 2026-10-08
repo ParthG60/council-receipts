@@ -60,6 +60,10 @@ def main():
           "all contract awards dated 2025 or later")
     check(all("/Notice/" in (r.get("url") or "") for r in contract_rows),
           "contract links point at human /Notice/{id} pages")
+    check(all(re.fullmatch(r"https://www\.contractsfinder\.service\.gov\.uk/Notice/[0-9a-fA-F-]{36}",
+                            r.get("url") or "")
+              for r in contract_rows),
+          "every contract link is a well-formed /Notice/{uuid}")
 
     # no stale elections: every advertised poll must be today or later
     today = __import__("datetime").date.today().isoformat()
