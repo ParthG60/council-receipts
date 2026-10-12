@@ -505,7 +505,7 @@ let qolHistoryPromise = null;
 function loadQolHistory() {
   if (QOL_HISTORY) return Promise.resolve(QOL_HISTORY);
   if (qolHistoryPromise) return qolHistoryPromise;
-  qolHistoryPromise = fetch("qol_history.json?v=20261012g")
+  qolHistoryPromise = fetch("qol_history.json?v=20261012h")
     .then((r) => r.json())
     .then((d) => { QOL_HISTORY = d; return d; })
     .catch(() => (QOL_HISTORY = null));
@@ -1382,7 +1382,9 @@ function renderQoL(c) {
   loadQolHistory().then((hist) => renderQolTrends(c, hist));
 }
 
-// Compact OWID-style line chart: council (blue) vs scope benchmark (grey dashed).
+// Compact line chart: council vs scope benchmark (grey dashed). The council line
+// is colour-coded by its standing at the latest point: green = better than the
+// group, red = worse, amber = about the same.
 function _svgSegs(vals, xf, yf) {
   const segs = [];
   let cur = [];
@@ -1392,6 +1394,25 @@ function _svgSegs(vals, xf, yf) {
   });
   if (cur.length) segs.push(cur);
   return segs;
+}
+
+const TREND_LINE_COLORS = { better: "#15803d", worse: "#b91c1c", similar: "#b45309" };
+
+// Which colour the council's line should be, from its latest value vs the group's.
+function trendStanding(f, councilLast, benchLast, useRank) {
+  if (councilLast == null || benchLast == null) return "similar";
+  const diff = councilLast - benchLast;
+  const tol = useRank ? 3 : (f.key === "air_quality_pm25_pct" ? 0.1 : 0.2);
+  if (Math.abs(diff) < tol) return "similar";
+  // rank 1 is always best, so lower is better in rank mode
+  const better = useRank ? diff < 0 : (f.lowerBetter ? diff < 0 : diff > 0);
+  return better ? "better" : "worse";
+}
+
+function _lastNonNull(vals) {
+  let li = -1, lv = null;
+  (vals || []).forEach((v, i) => { if (v != null) { li = i; lv = v; } });
+  return { i: li, v: lv };
 }
 
 function qolTrendCard(f, series, benchVals, periods, mode, label) {
@@ -1424,18 +1445,20 @@ function qolTrendCard(f, series, benchVals, periods, mode, label) {
     ? _svgSegs(bench, xf, yf).map((s) => `<polyline points="${s.join(" ")}" fill="none" stroke="#9a9a9a" stroke-width="1.5" stroke-dasharray="3 3"/>`).join("")
     : `<line x1="${padL}" y1="${yf((QOL_N + 1) / 2).toFixed(1)}" x2="${(padL + iw).toFixed(1)}" y2="${yf((QOL_N + 1) / 2).toFixed(1)}" stroke="#9a9a9a" stroke-width="1.5" stroke-dasharray="3 3"/>`;
 
-  const councilPath = _svgSegs(council, xf, yf).map((s) => `<polyline points="${s.join(" ")}" fill="none" stroke="#4C6A9C" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`).join("");
+  const councilLast = _lastNonNull(council);
+  const benchLastVal = useRank ? (QOL_N + 1) / 2 : _lastNonNull(bench).v;
+  const standing = trendStanding(f, councilLast.v, benchLastVal, useRank);
+  const lineColor = TREND_LINE_COLORS[standing];
+
+  const councilPath = _svgSegs(council, xf, yf).map((s) => `<polyline points="${s.join(" ")}" fill="none" stroke="${lineColor}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`).join("");
 
   // council end label (latest non-null)
-  let lastI = -1;
-  (council || []).forEach((v, i) => { if (v != null) lastI = i; });
   let councilEndY = null;
   let endLabel = "";
-  if (lastI >= 0) {
-    const lv = council[lastI];
-    councilEndY = yf(lv);
-    const txt = useRank ? `#${lv}` : fmtQolVal(f, lv);
-    endLabel = `<text x="${(xf(lastI) + 5).toFixed(1)}" y="${(councilEndY + 3.5).toFixed(1)}" font-size="11" font-weight="700" fill="#4C6A9C">${txt}</text>`;
+  if (councilLast.i >= 0) {
+    councilEndY = yf(councilLast.v);
+    const txt = useRank ? `#${councilLast.v}` : fmtQolVal(f, councilLast.v);
+    endLabel = `<text x="${(xf(councilLast.i) + 5).toFixed(1)}" y="${(councilEndY + 3.5).toFixed(1)}" font-size="11" font-weight="700" fill="${lineColor}">${txt}</text>`;
   }
 
   // benchmark end label — same x, so the magnitude gap between the two is visible
@@ -1443,14 +1466,12 @@ function qolTrendCard(f, series, benchVals, periods, mode, label) {
   if (useRank) {
     const medRank = (QOL_N + 1) / 2;
     benchLabel = `<text x="${(padL + iw + 5).toFixed(1)}" y="${(yf(medRank) + 3.5).toFixed(1)}" font-size="10" fill="#8a8a8a">median #${Math.round(medRank)}</text>`;
-  } else if (bench) {
-    let bLastI = -1;
-    (bench || []).forEach((v, i) => { if (v != null) bLastI = i; });
-    if (bLastI >= 0) {
-      const bv = bench[bLastI];
-      let by = yf(bv);
+  } else {
+    const bLast = _lastNonNull(bench);
+    if (bLast.i >= 0) {
+      let by = yf(bLast.v);
       if (councilEndY != null && Math.abs(by - councilEndY) < 12) by = councilEndY + 12; // avoid overlap
-      benchLabel = `<text x="${(xf(bLastI) + 5).toFixed(1)}" y="${(by + 3.5).toFixed(1)}" font-size="10" fill="#8a8a8a">${fmtQolVal(f, bv)}</text>`;
+      benchLabel = `<text x="${(xf(bLast.i) + 5).toFixed(1)}" y="${(by + 3.5).toFixed(1)}" font-size="10" fill="#8a8a8a">${fmtQolVal(f, bLast.v)}</text>`;
     }
   }
 
@@ -1488,13 +1509,15 @@ function renderQolTrends(c, hist) {
     ? `National rank over time (1 = best)`
     : `Trend over time vs ${label}`;
 
-  // Legend: which line is which. Solid blue = this council; dashed grey = the
-  // comparison group's median (or its median rank in rank mode).
+  // Legend: council line is colour-coded by standing vs the group; dashed grey is
+  // the group's median (or median rank in rank mode).
   const legend = el("qol-trend-legend");
   if (legend) {
     const benchTxt = qolTrendMode === "rank" ? "median council rank" : `median of ${label}`;
     legend.innerHTML =
-      `<span class="ql-item"><span class="ql-swatch ql-council"></span>This council</span>` +
+      `<span class="ql-item"><span class="ql-swatch ql-better"></span>this council — better than ${label}</span>` +
+      `<span class="ql-item"><span class="ql-swatch ql-worse"></span>worse</span>` +
+      `<span class="ql-item"><span class="ql-swatch ql-similar"></span>about the same</span>` +
       `<span class="ql-item"><span class="ql-swatch ql-bench"></span>${benchTxt}</span>`;
   }
 
@@ -2029,7 +2052,7 @@ let globalIndexPromise = null;
 
 function loadGlobalIndex() {
   if (globalIndexPromise) return globalIndexPromise;
-  globalIndexPromise = fetch("search_index_global.json?v=20261012g")
+  globalIndexPromise = fetch("search_index_global.json?v=20261012h")
     .then((r) => r.json())
     .then((d) => { globalIndex = d; return d; })
     .catch(() => { globalIndex = {}; return {}; });
@@ -2220,7 +2243,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261012g")
+  fetch("data.json?v=20261012h")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;

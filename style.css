@@ -865,8 +865,8 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
 }
 
 .qol-tag.neutral {
-  color: var(--ink-soft);
-  background: var(--paper);
+  color: #92400e;
+  background: #fef3c7;
 }
 
 .council-link {
@@ -1805,3 +1805,8 @@ body.modal-open { overflow: hidden; }
   font-family: var(--mono); font-size: 0.62rem; color: #9a9a9a;
   letter-spacing: 0.02em; white-space: nowrap;
 }
+
+/* trend line colour code: green = better than group, red = worse, amber = similar */
+.qol-trend-legend .ql-better { border-top: 2.5px solid #15803d; }
+.qol-trend-legend .ql-worse  { border-top: 2.5px solid #b91c1c; }
+.qol-trend-legend .ql-similar { border-top: 2.5px solid #b45309; }
