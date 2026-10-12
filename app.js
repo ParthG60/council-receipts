@@ -395,6 +395,18 @@ function renderCouncil(name) {
   currentClass = c.la_class || null;
   renderBenchmarkBar(c);
   renderStandout(c);
+
+  // Councils absent from the Council Gateway have no minutes, so the discussion
+  // and talk-vs-spend panels are omitted — say so rather than leave a silent gap.
+  const gwNote = el("gateway-note");
+  if (gwNote) {
+    if (!c.topic_share) {
+      gwNote.textContent = "Committee minutes aren't available for this council in the source (it isn't in the Council Gateway), so the discussion and talk-vs-spend panels are omitted. Outcomes, spending, borrowing and contracts are still shown.";
+      gwNote.style.display = "";
+    } else {
+      gwNote.style.display = "none";
+    }
+  }
   renderPopulation(c);
   renderAgeChart(c);
   renderTopicsChart(c, name);
@@ -493,7 +505,7 @@ let qolHistoryPromise = null;
 function loadQolHistory() {
   if (QOL_HISTORY) return Promise.resolve(QOL_HISTORY);
   if (qolHistoryPromise) return qolHistoryPromise;
-  qolHistoryPromise = fetch("qol_history.json?v=20261012e")
+  qolHistoryPromise = fetch("qol_history.json?v=20261012f")
     .then((r) => r.json())
     .then((d) => { QOL_HISTORY = d; return d; })
     .catch(() => (QOL_HISTORY = null));
@@ -1979,7 +1991,7 @@ let globalIndexPromise = null;
 
 function loadGlobalIndex() {
   if (globalIndexPromise) return globalIndexPromise;
-  globalIndexPromise = fetch("search_index_global.json?v=20261012e")
+  globalIndexPromise = fetch("search_index_global.json?v=20261012f")
     .then((r) => r.json())
     .then((d) => { globalIndex = d; return d; })
     .catch(() => { globalIndex = {}; return {}; });
@@ -2170,7 +2182,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261012e")
+  fetch("data.json?v=20261012f")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;

@@ -37,9 +37,9 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install pandas numpy plotly odfpy openpyxl
+        run: pip install pandas numpy plotly odfpy openpyxl requests
 
-      - name: Run pipeline (fetch, build, verify) + AI-native dossiers
+      - name: Run pipeline (registry prep, fetch, build, verify) + AI-native dossiers
         working-directory: data-repo/projects/council hack day
         run: |
           python pipeline.py
@@ -50,7 +50,7 @@ jobs:
         run: |
           git config user.name "council-receipts-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add data.json search_index search_index_global.json search_index.json \
+          git add data.json qol_history.json search_index search_index_global.json search_index.json \
                   dossiers llms.txt
           if git diff --staged --quiet; then
             echo "No data changes this run."

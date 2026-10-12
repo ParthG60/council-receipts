@@ -1780,3 +1780,10 @@ body.modal-open { overflow: hidden; }
   font-size: 0.9rem; color: var(--ink-soft); margin: 12px 0 0;
   line-height: 1.55;
 }
+
+/* ------------------------------------------------ gateway coverage note --- */
+.gateway-note {
+  font-size: 0.84rem; color: var(--ink-soft); line-height: 1.5;
+  margin: 8px 0 2px; padding: 8px 12px;
+  border-left: 2px solid var(--rule); background: var(--receipt);
+}
