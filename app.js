@@ -473,19 +473,19 @@ function rankIn(val, vals, lowerBetter) {
 const QOL_FIELDS = [
   { key: "life_expectancy", rankKey: "life_expectancy_rank", label: "Life Expectancy", unit: "yrs", lowerBetter: false, dp: 1, hist: true,
     note: "Period life expectancy at birth across sexes (ONS 2025)." },
-  { key: "attainment8", rankKey: "attainment8_rank", label: "GCSE Attainment 8", unit: "pts", lowerBetter: false, dp: 1, hist: false,
+  { key: "attainment8", rankKey: "attainment8_rank", label: "GCSE Attainment 8", unit: "pts", lowerBetter: false, dp: 1, hist: true,
     note: "Average GCSE Attainment 8 score per pupil across 8 subjects (DfE 2023/24)." },
-  { key: "rent_affordability", rankKey: "rent_affordability_rank", label: "Rent Affordability", unit: "%", lowerBetter: true, dp: 1, hist: false,
+  { key: "rent_affordability", rankKey: "rent_affordability_rank", label: "Rent Affordability", unit: "%", lowerBetter: true, dp: 1, hist: true,
     note: "Median private rent as a % of median gross full-time earnings (ONS PIPR/ASHE)." },
   { key: "air_quality_pm25_pct", rankKey: "air_quality_rank", label: "Air Quality (PM2.5)", unit: "%", lowerBetter: true, dp: 2, hist: true,
     note: "Estimated % of adult all-cause mortality attributable to human-made fine particulate air pollution PM2.5 (Defra/OHID)." },
   { key: "child_poverty_pct", rankKey: "child_poverty_rank", label: "Child Poverty", unit: "%", lowerBetter: true, dp: 1, hist: true,
     note: "Share of children aged under 16 living in families in relative low income (DWP)." },
-  { key: "claimant_rate_pct", rankKey: "claimant_rate_rank", label: "Claimant Rate", unit: "%", lowerBetter: true, dp: 1, hist: false,
+  { key: "claimant_rate_pct", rankKey: "claimant_rate_rank", label: "Claimant Rate", unit: "%", lowerBetter: true, dp: 1, hist: true,
     note: "Universal Credit / JSA claimants as a % of resident population aged 16-64 (Nomis July 2026)." },
-  { key: "crime_per_1000", rankKey: "crime_rank", label: "Crime Rate", unit: "", lowerBetter: true, dp: 1, hist: false,
+  { key: "crime_per_1000", rankKey: "crime_rank", label: "Crime Rate", unit: "", lowerBetter: true, dp: 1, hist: true,
     note: "Total recorded offences (excluding fraud) per 1,000 residents (ONS CSP 2024)." },
-  { key: "house_earnings", rankKey: "house_earnings_rank", label: "House / Earnings", unit: "×", lowerBetter: true, dp: 1, hist: false,
+  { key: "house_earnings", rankKey: "house_earnings_rank", label: "House / Earnings", unit: "×", lowerBetter: true, dp: 1, hist: true,
     note: "Mean house price ÷ median gross full-time annual pay (HPI/ASHE). Lower is more affordable." },
 ];
 const QOL_BY_KEY = Object.fromEntries(QOL_FIELDS.map((f) => [f.key, f]));
@@ -505,7 +505,7 @@ let qolHistoryPromise = null;
 function loadQolHistory() {
   if (QOL_HISTORY) return Promise.resolve(QOL_HISTORY);
   if (qolHistoryPromise) return qolHistoryPromise;
-  qolHistoryPromise = fetch("qol_history.json?v=20261012f")
+  qolHistoryPromise = fetch("qol_history.json?v=20261012g")
     .then((r) => r.json())
     .then((d) => { QOL_HISTORY = d; return d; })
     .catch(() => (QOL_HISTORY = null));
@@ -1460,6 +1460,16 @@ function renderQolTrends(c, hist) {
     ? `National rank over time (1 = best)`
     : `Trend over time vs ${label}`;
 
+  // Legend: which line is which. Solid blue = this council; dashed grey = the
+  // comparison group's median (or its median rank in rank mode).
+  const legend = el("qol-trend-legend");
+  if (legend) {
+    const benchTxt = qolTrendMode === "rank" ? "median council rank" : `median of ${label}`;
+    legend.innerHTML =
+      `<span class="ql-item"><span class="ql-swatch ql-council"></span>This council</span>` +
+      `<span class="ql-item"><span class="ql-swatch ql-bench"></span>${benchTxt}</span>`;
+  }
+
   const cards = QOL_FIELDS.filter((f) => f.hist && series[f.key] && hist.metrics[f.key])
     .map((f) => {
       const meta = hist.metrics[f.key];
@@ -1991,7 +2001,7 @@ let globalIndexPromise = null;
 
 function loadGlobalIndex() {
   if (globalIndexPromise) return globalIndexPromise;
-  globalIndexPromise = fetch("search_index_global.json?v=20261012f")
+  globalIndexPromise = fetch("search_index_global.json?v=20261012g")
     .then((r) => r.json())
     .then((d) => { globalIndex = d; return d; })
     .catch(() => { globalIndex = {}; return {}; });
@@ -2182,7 +2192,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261012f")
+  fetch("data.json?v=20261012g")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;

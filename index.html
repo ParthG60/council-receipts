@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261012f">
+<link rel="stylesheet" href="style.css?v=20261012g">
 </head>
 <body>
 <div class="container">
@@ -131,9 +131,10 @@
             <button class="toggle-btn" data-qol-mode="rank">National rank</button>
           </div>
         </div>
+        <div id="qol-trend-legend" class="qol-trend-legend"></div>
         <div id="qol-trends" class="qol-trends"></div>
         <div id="qol-grid" class="qol-grid"></div>
-        <p class="caption" id="qol-caption">Sources: ONS Health State Life Expectancies (2025) · DfE GCSE Attainment 8 (2023/24) · ONS Private Rent Affordability (PIPR/ASHE) · Defra/OHID PM2.5 Mortality Fraction · DWP Children in Low Income Families · Nomis Claimant Count (July 2026) · ONS CSP Crime (2024) · HM Land Registry average house price ÷ ASHE full-time pay. Trends cover indicators with a published annual series (life expectancy, child poverty, air quality).</p>
+        <p class="caption" id="qol-caption">Sources: ONS Health State Life Expectancies (2025) · DfE GCSE Attainment 8 (2023/24) · ONS Private Rent Affordability (PIPR/ASHE) · Defra/OHID PM2.5 Mortality Fraction · DWP Children in Low Income Families · Nomis Claimant Count (July 2026) · ONS CSP Crime (2024) · HM Land Registry average house price ÷ ASHE full-time pay. Every card has a trend, drawn from the same annual sources.</p>
       </section>
 
       <section class="panel" id="panel-docsearch">
@@ -158,7 +159,7 @@
         <p><strong>Spend benchmarks.</strong> England spend figures are calculated as population-weighted England averages across all <span class="council-count">288</span> local authorities (total English spend divided by total population for £/resident, and total topic spend divided by total expenditure for budget shares).</p>
         <h3>Taxonomy</h3>
         <table id="taxonomy-table" class="taxonomy"></table>
-        <p><strong>Quality of Life scorecard &amp; league table.</strong> Eight outcome-based indicators, ranked against the active comparison group (Rank #1 = best). Trend charts show how the indicators with a published annual series (life expectancy, child poverty, air quality) have moved over time, with the group median as the reference line. The "Compare against" switcher changes the benchmark across the whole page — England, your ONS region, or your authority type (London Boroughs, Metropolitan Boroughs, Unitaries, Shire Districts).</p>
+        <p><strong>Quality of Life scorecard &amp; league table.</strong> Eight outcome-based indicators, ranked against the active comparison group (Rank #1 = best). Every card also has a trend chart, drawn from the same annual sources (Fingertips, DfE, ONS, Nomis, HM Land Registry), with the group median as the reference line and a toggle between actual values and national rank. The "Compare against" switcher changes the benchmark across the whole page — England, your ONS region, or your authority type (London Boroughs, Metropolitan Boroughs, Unitaries, Shire Districts).</p>
         <ul>
           <li><strong>Life Expectancy at Birth:</strong> ONS Health State Life Expectancies (2025, 2021–23 pool). Median English council: <span id="method-eng-le">82.3</span> yrs.</li>
           <li><strong>GCSE Attainment 8:</strong> DfE Key Stage 4 performance (2023/24), average points per pupil across 8 GCSE subjects. Median English council: <span id="method-eng-att8">45.5</span> pts.</li>
@@ -345,8 +346,8 @@
         <tr><td>⚠️ Section 114 notice</td><td>An active statutory spending-freeze notice</td><td>MHCLG intervention register</td></tr>
         <tr><td>⚡ Exceptional Financial Support</td><td>An active EFS capitalisation directive</td><td>MHCLG intervention register</td></tr>
         <tr><td>⚡ Talk-vs-spend gap</td><td>A <em>discretionary</em> service's spend share and discussion share differ by enough to be in the top 20% nationally (statutory children's and adult social care excluded — their budgets are formula-set and pass-through)</td><td>Derived: MHCLG outturn vs Gateway minutes</td></tr>
-        <tr><td>📉 QoL worsening</td><td>An indicator moved materially the wrong way since the earliest year — the change sits in the worst ~10% of all councils</td><td>OHID Fingertips annual series (life expectancy, child poverty, air quality)</td></tr>
-        <tr><td>📈 QoL improving</td><td>An indicator moved materially the right way since the earliest year — the change sits in the best ~10% of all councils</td><td>OHID Fingertips annual series (life expectancy, child poverty, air quality)</td></tr>
+        <tr><td>📉 QoL worsening</td><td>An indicator moved materially the wrong way since the earliest year — the change sits in the worst ~10% of all councils</td><td>Annual source series per indicator (Fingertips, DfE, ONS, Nomis, HM Land Registry)</td></tr>
+        <tr><td>📈 QoL improving</td><td>An indicator moved materially the right way since the earliest year — the change sits in the best ~10% of all councils</td><td>Annual source series per indicator (Fingertips, DfE, ONS, Nomis, HM Land Registry)</td></tr>
         <tr><td>🗳 Control changed</td><td>The party or coalition in charge changed since 2025</td><td>Open Council Data UK compositions</td></tr>
       </tbody>
     </table>
@@ -385,6 +386,6 @@
 </div>
 
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" defer></script>
-<script src="app.js?v=20261012f" defer></script>
+<script src="app.js?v=20261012g" defer></script>
 </body>
 </html>

@@ -1787,3 +1787,16 @@ body.modal-open { overflow: hidden; }
   margin: 8px 0 2px; padding: 8px 12px;
   border-left: 2px solid var(--rule); background: var(--receipt);
 }
+
+/* -------------------------------------------------- QoL trend legend --- */
+.qol-trend-legend {
+  display: flex; flex-wrap: wrap; gap: 18px; align-items: center;
+  margin: 2px 0 10px;
+}
+.qol-trend-legend .ql-item {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 0.72rem; color: var(--ink-soft);
+}
+.qol-trend-legend .ql-swatch { width: 22px; height: 0; display: inline-block; }
+.qol-trend-legend .ql-council { border-top: 2.5px solid #4C6A9C; }
+.qol-trend-legend .ql-bench { border-top: 1.5px dashed #9a9a9a; }

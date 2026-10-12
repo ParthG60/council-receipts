@@ -95,8 +95,10 @@ def main():
     check(hist_path.exists(), "qol_history.json present")
     if hist_path.exists():
         hist = json.loads(hist_path.read_text())
-        check(set(hist.get("metrics", {})) == {"life_expectancy", "child_poverty_pct", "air_quality_pm25_pct"},
-              "qol_history has the three annual metrics")
+        check(set(hist.get("metrics", {})) >= {
+            "life_expectancy", "attainment8", "rent_affordability", "air_quality_pm25_pct",
+            "child_poverty_pct", "claimant_rate_pct", "crime_per_1000", "house_earnings",
+        }, "qol_history has all eight annual metrics")
         missing = [c["ons_code"] for c in councils.values() if c.get("ons_code") not in hist.get("councils", {})]
         check(not missing, f"qol_history covers every council (missing {len(missing)})")
         for scope in ("england", "region", "type"):
