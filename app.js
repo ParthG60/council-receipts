@@ -607,7 +607,7 @@ function buildCitizenBriefing(c) {
   if (contracts.length) {
     L.push("## Largest published contract awards (Contracts Finder, 2025–2026)");
     contracts.slice(0, 5).forEach((r) => {
-      L.push(`- ${r.supplier}: £${((r.value_gbp || 0) / 1e6).toFixed(1)}m${r.latest ? ` (awarded ${r.latest})` : ""}${r.title ? ` — ${r.title}` : ""}${r.url ? ` — ${r.url}` : ""}`);
+      L.push(`- ${r.supplier}: ${fmtAward(r.value_gbp)}${r.latest ? ` (awarded ${r.latest})` : ""}${r.title ? ` — ${r.title}` : ""}${r.url ? ` — ${r.url}` : ""}`);
     });
     L.push("");
   }
@@ -681,6 +681,20 @@ function fmtGbpM(n) {
   return "£" + Math.round(n).toLocaleString("en-GB") + "m";
 }
 
+// Contract-award money: precise and readable at any size — £14.57m, £567k, £42k.
+function fmtAward(gbp) {
+  if (gbp == null) return "—";
+  const v = Math.abs(gbp);
+  if (v >= 1_000_000) return "£" + (gbp / 1_000_000).toFixed(2) + "m";
+  if (v >= 1_000) return "£" + Math.round(gbp / 1_000) + "k";
+  return "£" + Math.round(gbp);
+}
+
+function fmtGbpFull(gbp) {
+  if (gbp == null) return "";
+  return "£" + Math.round(gbp).toLocaleString("en-GB");
+}
+
 // -------------------------------------------------- borrowing & debt ---
 function renderBorrowing(c) {
   const b = c.borrowing;
@@ -739,7 +753,7 @@ function renderContracts(c) {
     return `
     <tr>
       <td><a href="${href}" target="_blank" rel="noopener"${titleAttr}>${r.supplier}</a>${r.title ? `<div class="contract-title">${r.title}</div>` : ""}</td>
-      <td class="num-cell">${fmtGbpM((r.value_gbp || 0) / 1_000_000)}</td>
+      <td class="num-cell"><span title="${fmtGbpFull(r.value_gbp)}">${fmtAward(r.value_gbp)}</span></td>
       <td class="num-cell">${r.latest ? r.latest.replace(/-/g, "/") : "—"}</td>
     </tr>`;
   }).join("");
@@ -749,7 +763,7 @@ function renderContracts(c) {
       <thead><tr><th>Supplier</th><th class="num-th">Awarded value</th><th class="num-th">Awarded</th></tr></thead>
       <tbody>${body}</tbody>
     </table>
-    <p class="contracts-total">Combined value of the awards shown: <strong>${fmtGbpM(total / 1_000_000)}</strong> <span class="contracts-window">(awards dated 2025–2026)</span></p>
+    <p class="contracts-total">Combined value of the awards shown: <strong>${fmtAward(total)}</strong> <span class="contracts-window">(awards dated 2025–2026)</span></p>
     <p class="contracts-note">Each row is a single contract award; the supplier links to that award notice on Contracts Finder (the UK government's public register). Values are as published and can include multi-year frameworks. <a href="${contractsFinderUrl(councilQuery + " Council")}" target="_blank" rel="noopener">See all ${councilQuery} awards →</a></p>`;
 }
 

@@ -122,7 +122,14 @@ def dossier(name, c):
         L.append("## Largest published contract awards (Contracts Finder, 2025–2026)")
         for r in contracts[:5]:
             val = r.get("value_gbp")
-            val_s = f"£{val/1_000_000:.1f}m" if val else "n/a"
+            if val is None:
+                val_s = "n/a"
+            elif val >= 1_000_000:
+                val_s = f"£{val/1_000_000:.2f}m"
+            elif val >= 1_000:
+                val_s = f"£{round(val/1_000)}k"
+            else:
+                val_s = f"£{round(val)}"
             line = f"- {r.get('supplier')}: {val_s}"
             if r.get("latest"):
                 line += f" (awarded {r['latest']})"
