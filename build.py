@@ -531,6 +531,21 @@ def main():
     lad2cty_df = read_csv_optional(ENG_DIR / "lad_to_county_2023.csv")
     parent_county_map = dict(zip(lad2cty_df["LAD23CD"], lad2cty_df["CTY23NM"])) if lad2cty_df is not None else {}
     parent_county_code_map = dict(zip(lad2cty_df["LAD23CD"], lad2cty_df["CTY23CD"])) if lad2cty_df is not None else {}
+
+    # ONS region (ITL1) per LAD, for regional benchmarking
+    region_df = read_csv_optional(ENG_DIR / "lad_to_region.csv")
+    region_map = dict(zip(region_df["LAD23CD"], region_df["RGN23NM"])) if region_df is not None else {}
+    region_code_map = dict(zip(region_df["LAD23CD"], region_df["RGN23CD"])) if region_df is not None else {}
+
+    # QoL trend flags (materially improved/worsened vs the cross-council distribution)
+    trends_df = read_csv_optional(ENG_DIR / "qol_trends.csv")
+    trends_by_code = {}
+    if trends_df is not None:
+        for _, tr in trends_df.iterrows():
+            trends_by_code.setdefault(tr["ons_code"], []).append({
+                "metric": tr["metric"], "direction": tr["direction"],
+                "change": float(tr["change"]), "z": float(tr["z"]),
+            })
     
     fin_df = read_csv_optional(ENG_DIR / "finance_all.csv")
     la_class_raw = dict(zip(fin_df["ons_code"], fin_df["class"])) if fin_df is not None else {}
@@ -902,6 +917,9 @@ def main():
             "la_class_label": CLASS_LABELS.get(raw_class, "Local Authority"),
             "parent_county": parent_county_map.get(code),
             "parent_county_code": parent_county_code_map.get(code),
+            "region": region_map.get(code),
+            "region_code": region_code_map.get(code),
+            "qol_trends": trends_by_code.get(code, []),
             "party": ctrl["bucket"] if ctrl else None,
             "party_full": ctrl["current"] if ctrl else None,
             "control": ctrl,

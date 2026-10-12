@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261012c">
+<link rel="stylesheet" href="style.css?v=20261012d">
 </head>
 <body>
 <div class="container">
@@ -51,6 +51,10 @@
       <div class="council-actions">
         <button type="button" id="copy-briefing-btn" class="ai-btn">✦ Copy citizen briefing for your AI</button>
         <a id="dossier-link" class="ai-btn ghost" href="#" target="_blank" rel="noopener" style="display:none;">Plain-text dossier (.md)</a>
+      </div>
+      <div id="benchmark-bar" class="benchmark-bar" style="display:none;">
+        <span class="benchmark-label">Compare against</span>
+        <div class="toggle-group" id="benchmark-toggle"></div>
       </div>
     </div>
 
@@ -100,30 +104,35 @@
         <p class="caption" id="tvs-caption"></p>
       </section>
 
-      <section class="panel" id="panel-borrowing">
-        <h2>Borrowing &amp; debt <span class="prov prov-official" title="MHCLG Quarterly Borrowing & Investment Live Table">Official · MHCLG</span></h2>
-        <p class="lede">Outstanding borrowing owed by the council — a lead indicator of financial stress.</p>
-        <div id="borrowing-body" class="stat-grid"></div>
-        <p class="caption">Source: MHCLG Quarterly Borrowing &amp; Investment Live Table (latest quarter). Total outstanding borrowing across all loan and securities categories. Per-resident uses ONS mid-2024 population.</p>
+      <section class="panel" id="panel-finances">
+        <h2>Financial health &amp; borrowing <span class="prov prov-official" title="MHCLG Section 114 / Exceptional Financial Support registers + Quarterly Borrowing & Investment Live Table">Official · MHCLG</span></h2>
+        <p class="lede">Statutory standing and the debt the council is carrying. A council can be technically solvent yet still carry heavy borrowing — both matter.</p>
+        <div id="finances-status-box"></div>
+        <div id="finances-body" class="stat-grid"></div>
+        <p class="finances-synth" id="finances-synth"></p>
+        <p class="caption" id="finances-caption">Source: MHCLG Section 114 &amp; Exceptional Financial Support registers (2024–2026); MHCLG Quarterly Borrowing &amp; Investment Live Table (latest quarter). Total outstanding borrowing across all loan and securities categories. Per-resident uses ONS mid-2024 population.</p>
       </section>
 
       <section class="panel" id="panel-contracts">
         <h2>Who gets the money: largest contract awards <span class="prov prov-direct" title="Crown Commercial Service Contracts Finder (awarded contracts)">Direct record · Contracts Finder</span></h2>
         <p class="lede">Public bodies must publish contract awards above a value threshold. These are this council's biggest single contract awards as published to Contracts Finder — who is getting the money, and how much.</p>
         <div id="contracts-body"></div>
-        <p class="caption">Source: Crown Commercial Service Contracts Finder (awarded contracts dated 2025–2026, matched to this council as the buyer). Each row is one award notice; values are as published and may reflect framework ceilings or multi-year terms; multi-supplier framework lots are excluded.</p>
-      </section>
-
-      <section class="panel" id="panel-distress">
-        <h2>Financial health &amp; distress check <span class="prov prov-official" title="MHCLG Section 114 & Exceptional Financial Support registers">Official · MHCLG</span></h2>
-        <div id="distress-status-box"></div>
-        <p class="caption" id="distress-caption">Source: MHCLG Section 114 statutory notices &amp; Exceptional Financial Support (EFS) capitalisation records (2024–2026).</p>
+        <p class="caption">Source: Crown Commercial Service Contracts Finder (awarded contracts dated 2025–2026, matched to this council as the named buyer). Each row is one award notice; values are as published and may reflect framework ceilings or multi-year terms; multi-supplier framework lots are excluded. Procurement by arms-length bodies (housing ALMOs, council-owned trading companies) is published under those bodies' own names and is not included.</p>
       </section>
 
       <section class="panel" id="panel-qol">
         <h2>Quality of life indicators <span class="prov prov-official" title="ONS, DfE, Defra/OHID, DWP and Nomis official statistics">Official · ONS / DfE / DWP</span></h2>
+        <p class="lede" id="qol-lede">How has this area's quality of life changed over time, and where does it sit today?</p>
+        <div class="qol-trends-head">
+          <span class="qol-trends-title" id="qol-trends-title">Trends over time</span>
+          <div class="toggle-group" id="qol-mode-toggle">
+            <button class="toggle-btn active" data-qol-mode="value">Actual values</button>
+            <button class="toggle-btn" data-qol-mode="rank">National rank</button>
+          </div>
+        </div>
+        <div id="qol-trends" class="qol-trends"></div>
         <div id="qol-grid" class="qol-grid"></div>
-        <p class="caption">Sources: ONS Health State Life Expectancies (2025) · DfE GCSE Attainment 8 (2023/24) · ONS Private Rent Affordability (PIPR/ASHE) · Defra/OHID PM2.5 Mortality Fraction · DWP Children in Low Income Families · Nomis Claimant Count (July 2026) · ONS CSP Crime (2024) · HM Land Registry average house price ÷ ASHE full-time pay.</p>
+        <p class="caption" id="qol-caption">Sources: ONS Health State Life Expectancies (2025) · DfE GCSE Attainment 8 (2023/24) · ONS Private Rent Affordability (PIPR/ASHE) · Defra/OHID PM2.5 Mortality Fraction · DWP Children in Low Income Families · Nomis Claimant Count (July 2026) · ONS CSP Crime (2024) · HM Land Registry average house price ÷ ASHE full-time pay. Trends cover indicators with a published annual series (life expectancy, child poverty, air quality).</p>
       </section>
 
       <section class="panel" id="panel-docsearch">
@@ -148,7 +157,7 @@
         <p><strong>Spend benchmarks.</strong> England spend figures are calculated as population-weighted England averages across all 283 local authorities (total English spend divided by total population for £/resident, and total topic spend divided by total expenditure for budget shares).</p>
         <h3>Taxonomy</h3>
         <table id="taxonomy-table" class="taxonomy"></table>
-        <p><strong>Quality of Life scorecard &amp; league table.</strong> Eight outcome-based indicators with national ranks across England (Rank #1 = best; Rank #283 = worst):</p>
+        <p><strong>Quality of Life scorecard &amp; league table.</strong> Eight outcome-based indicators, ranked against the active comparison group (Rank #1 = best). Trend charts show how the indicators with a published annual series (life expectancy, child poverty, air quality) have moved over time, with the group median as the reference line. The "Compare against" switcher changes the benchmark across the whole page — England, your ONS region, or your authority type (London Boroughs, Metropolitan Boroughs, Unitaries, Shire Districts).</p>
         <ul>
           <li><strong>Life Expectancy at Birth:</strong> ONS Health State Life Expectancies (2025, 2021–23 pool). Median English council: <span id="method-eng-le">82.3</span> yrs.</li>
           <li><strong>GCSE Attainment 8:</strong> DfE Key Stage 4 performance (2023/24), average points per pupil across 8 GCSE subjects. Median English council: <span id="method-eng-att8">45.5</span> pts.</li>
@@ -159,7 +168,8 @@
           <li><strong>Crime Rate:</strong> ONS Community Safety Partnerships (2024), recorded offences per 1,000 residents. Median English council: <span id="method-eng-crime">79.4</span>.</li>
           <li><strong>House / Earnings:</strong> HM Land Registry average house price ÷ ASHE median gross full-time annual pay (weekly × 52). Lower is more affordable. Ratio of a mean price to a median wage, so treat as an indicative affordability multiple, not an official ONS ratio.</li>
         </ul>
-        <p><strong>Standout flags.</strong> The pills under each council name are generated from national benchmarks: top/bottom 20% on crime, rent affordability, child poverty and house price-to-earnings; top/bottom 10% on borrowing per resident; any active Section 114 notice or Exceptional Financial Support; the largest talk-vs-spend gap among <em>discretionary</em> services (statutory social care and schools excluded); and any change of political control since 2025.</p>
+        <p><strong>Standout flags.</strong> The pills under each council name are generated from benchmarks against the active comparison group: top/bottom 20% on crime, rent affordability, child poverty and house price-to-earnings; top/bottom 10% on borrowing per resident; any active Section 114 notice or Exceptional Financial Support; the largest talk-vs-spend gap among <em>discretionary</em> services (statutory social care and schools excluded); any change of political control since 2025; and any quality-of-life indicator that has materially improved or worsened over time (a change in the best/worst ~10% of councils).</p>
+        <p><strong>Financial health &amp; borrowing.</strong> One panel combines statutory standing (Section 114 notices and Exceptional Financial Support, from MHCLG intervention registers) with the debt the council carries (MHCLG Quarterly Borrowing &amp; Investment Live Table). Both matter: a council can be technically solvent yet still carry heavy borrowing. Debt per resident is ranked within the active comparison group.</p>
         <p><strong>Council tiers &amp; remits.</strong> Shire Districts (lower-tier councils) deliver Housing, Local Planning, Waste Collection, and Leisure. Upper-tier County Councils provide Education, Adult &amp; Children's Social Care, Public Health, and Highways. Unitary and London/Metropolitan Boroughs deliver all services under a single authority.</p>
         <p><strong>AI-native.</strong> Every council has a plain-text dossier at <code>dossiers/{ONS code}.md</code> and a one-click "copy citizen briefing" button, so you can point your own ChatGPT or Claude at verified numbers rather than a scraped page.</p>
         <p><strong>Limitations.</strong> Political control reflects current council composition from Open Council Data UK (2026). Some councils have incomplete Gateway minutes, so discussion panels are omitted while retaining finance and outcome metrics. Keyword classification counts what minutes mention, not debate quality or voting outcomes.</p>
@@ -320,12 +330,12 @@
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="rubric-title">
     <button type="button" class="modal-close" data-close="rubric-modal" aria-label="Close">×</button>
     <h3 id="rubric-title">How the standout flags are calculated</h3>
-    <p class="modal-lede">Every pill is a benchmark against the other English councils, not an editorial verdict. Rank #1 is best on each indicator. Council tiers do different jobs, so read the flags alongside the council type.</p>
+    <p class="modal-lede">Every pill is a benchmark against other English councils — by default the whole country, or your chosen comparison group (region or authority type) via the switcher. It is not an editorial verdict. Rank #1 is best on each indicator. Council tiers do different jobs, so read the flags alongside the council type.</p>
     <table class="rubric-table">
       <thead><tr><th>Flag</th><th>Rule</th><th>Source</th></tr></thead>
       <tbody>
-        <tr><td>🚨 High crime</td><td>Bottom 20% nationally (rank 227–283 of 283)</td><td>ONS Community Safety Partnerships, 2024</td></tr>
-        <tr><td>🟢 Low crime</td><td>Top 20% nationally (rank 1–57)</td><td>ONS Community Safety Partnerships, 2024</td></tr>
+        <tr><td>🚨 High crime</td><td>Bottom 20% of the comparison group</td><td>ONS Community Safety Partnerships, 2024</td></tr>
+        <tr><td>🟢 Low crime</td><td>Top 20% of the comparison group</td><td>ONS Community Safety Partnerships, 2024</td></tr>
         <tr><td>🚨 Severe rent strain</td><td>Top 20% on rent-to-earnings ratio</td><td>ONS PIPR private rents ÷ ASHE earnings</td></tr>
         <tr><td>🟢 Affordable rents</td><td>Bottom 20% on rent-to-earnings ratio</td><td>ONS PIPR private rents ÷ ASHE earnings</td></tr>
         <tr><td>🚩 High child poverty</td><td>Top 20% of children in relative low-income households</td><td>DWP Children in Low Income Families</td></tr>
@@ -334,10 +344,12 @@
         <tr><td>⚠️ Section 114 notice</td><td>An active statutory spending-freeze notice</td><td>MHCLG intervention register</td></tr>
         <tr><td>⚡ Exceptional Financial Support</td><td>An active EFS capitalisation directive</td><td>MHCLG intervention register</td></tr>
         <tr><td>⚡ Talk-vs-spend gap</td><td>A <em>discretionary</em> service's spend share and discussion share differ by enough to be in the top 20% nationally (statutory children's and adult social care excluded — their budgets are formula-set and pass-through)</td><td>Derived: MHCLG outturn vs Gateway minutes</td></tr>
+        <tr><td>📉 QoL worsening</td><td>An indicator moved materially the wrong way since the earliest year — the change sits in the worst ~10% of all councils</td><td>OHID Fingertips annual series (life expectancy, child poverty, air quality)</td></tr>
+        <tr><td>📈 QoL improving</td><td>An indicator moved materially the right way since the earliest year — the change sits in the best ~10% of all councils</td><td>OHID Fingertips annual series (life expectancy, child poverty, air quality)</td></tr>
         <tr><td>🗳 Control changed</td><td>The party or coalition in charge changed since 2025</td><td>Open Council Data UK compositions</td></tr>
       </tbody>
     </table>
-    <p class="modal-foot">Thresholds are national deciles computed across all 283 councils. Spot an error? <a href="#" data-goto-feedback>Report a discrepancy</a>.</p>
+    <p class="modal-foot">Thresholds are deciles computed across the active comparison group (England, region, or authority type). Spot an error? <a href="#" data-goto-feedback>Report a discrepancy</a>.</p>
   </div>
 </div>
 
@@ -372,6 +384,6 @@
 </div>
 
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" defer></script>
-<script src="app.js?v=20261012c" defer></script>
+<script src="app.js?v=20261012d" defer></script>
 </body>
 </html>

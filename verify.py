@@ -86,6 +86,22 @@ def main():
         check(m is not None and val is not None and m.group(1).strip() == f"{float(val):.{dp}f}",
               f"methodology England value {sid} matches data ({m.group(1).strip() if m else 'missing'})")
 
+    # every council should carry an ONS region for regional benchmarking
+    n_region = sum(1 for c in councils.values() if c.get("region"))
+    check(n_region >= n_reg - 3, f"ONS region present for >= {n_reg - 3} councils (got {n_region})")
+
+    # QoL history must cover every council and the three annual series
+    hist_path = SITE / "qol_history.json"
+    check(hist_path.exists(), "qol_history.json present")
+    if hist_path.exists():
+        hist = json.loads(hist_path.read_text())
+        check(set(hist.get("metrics", {})) == {"life_expectancy", "child_poverty_pct", "air_quality_pm25_pct"},
+              "qol_history has the three annual metrics")
+        missing = [c["ons_code"] for c in councils.values() if c.get("ons_code") not in hist.get("councils", {})]
+        check(not missing, f"qol_history covers every council (missing {len(missing)})")
+        for scope in ("england", "region", "type"):
+            check(bool(hist.get("benchmarks", {}).get(scope)), f"qol_history benchmarks.{scope} present")
+
     # party_by_tier present and populated for the comparison tiers
     pbt = data.get("party_by_tier") or {}
     for tk in ("single", "district", "county"):

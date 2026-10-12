@@ -1728,3 +1728,55 @@ body.modal-open { overflow: hidden; }
   .rubric-table { font-size: 0.74rem; }
   .pc-ward { display: none; }
 }
+
+/* ------------------------------------------------ benchmark switcher --- */
+.benchmark-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 12px 0 2px;
+}
+.benchmark-label {
+  font-family: var(--mono); font-size: 0.68rem; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
+}
+.benchmark-bar .toggle-group { margin: 0; }
+
+/* ------------------------------------------------------- QoL trends --- */
+.qol-trends-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin: 16px 0 4px;
+}
+.qol-trends-title {
+  font-family: var(--mono); font-size: 0.72rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft);
+}
+.qol-trends-head .toggle-group { margin: 0; }
+.qol-trends {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin: 6px 0 18px;
+}
+.qol-trend-card {
+  background: var(--receipt);
+  border: 1px solid var(--rule);
+  padding: 12px 12px 8px;
+}
+.qol-trend-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 2px;
+}
+.qol-trend-name {
+  font-family: var(--mono); font-size: 0.68rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft);
+}
+.qol-trend-card svg { display: block; overflow: visible; }
+.qol-trend-foot {
+  display: flex; justify-content: space-between;
+  font-family: var(--mono); font-size: 0.66rem; color: var(--ink-soft);
+  margin-top: 2px;
+}
+
+.finances-synth {
+  font-size: 0.9rem; color: var(--ink-soft); margin: 12px 0 0;
+  line-height: 1.55;
+}

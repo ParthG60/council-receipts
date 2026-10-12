@@ -45,6 +45,8 @@ def dossier(name, c):
     L.append(f"- ONS code: {code}")
     L.append(f"- Tier: {c.get('la_class_label') or c.get('tier') or 'n/a'}"
              + (f" (part of {c['parent_county']})" if c.get("parent_county") else ""))
+    if c.get("region"):
+        L.append(f"- ONS region: {c['region']}")
     L.append(f"- Political control: {c.get('party_full') or c.get('party') or 'n/a'}")
     ctrl = c.get("control") or {}
     if ctrl.get("changed"):
@@ -75,6 +77,18 @@ def dossier(name, c):
         L.append(f"- {label}: {'; '.join(parts)} ({src})")
     L.append("- Note: crime per 1,000 residents is inflated in city/town centres by commuters, shoppers and nightlife (counted in offences, not residents).")
     L.append("")
+
+    trends = c.get("qol_trends") or []
+    if trends:
+        tlabels = {"life_expectancy": "Life expectancy (yrs)", "child_poverty_pct": "Child poverty (%)",
+                   "air_quality_pm25_pct": "Air quality PM2.5 (%)"}
+        L.append("## Quality-of-life trends (OHID Fingertips annual series)")
+        for t in trends:
+            lab = tlabels.get(t.get("metric"), t.get("metric"))
+            ch = t.get("change", 0)
+            L.append(f"- {lab}: {t.get('direction')} — {ch:+g} since the earliest year "
+                     f"(change in the best/worst ~10% of councils)")
+        L.append("")
 
     L.append("## Financial health (benchmarked)")
     if d.get("severity", 0) >= 2:

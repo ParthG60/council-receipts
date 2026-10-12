@@ -391,8 +391,10 @@ function renderCouncil(name) {
 
   renderControlLine(c);
   renderElectionBanner(c);
+  currentRegion = c.region || null;
+  currentClass = c.la_class || null;
+  renderBenchmarkBar(c);
   renderStandout(c);
-  renderDistress(c);
   renderPopulation(c);
   renderAgeChart(c);
   renderTopicsChart(c, name);
@@ -401,7 +403,7 @@ function renderCouncil(name) {
   if (cap && w && c.topic_share) cap.textContent = `Source: Council Gateway API meeting minutes, ${w.label} (${w.docs.toLocaleString("en-GB")} documents classified). Share of all topic keyword hits.`;
   renderMoneyChart(c);
   renderTalkVsSpend(c);
-  renderBorrowing(c);
+  renderFinances(c);
   renderContracts(c);
   renderQoL(c);
   renderDocumentSearch(c);
@@ -418,14 +420,136 @@ function renderCouncil(name) {
 // Rank convention in data.json: 1 = best on every QoL indicator.
 let QOL_N = 283;
 
-function borrowingPercentiles() {
-  const vals = Object.values(DATA.councils)
-    .map((c) => (c.borrowing ? c.borrowing.per_resident : null))
-    .filter((v) => v != null)
-    .sort((a, b) => a - b);
-  if (!vals.length) return { p10: null, p90: null };
-  return { p10: vals[Math.floor(vals.length * 0.1)], p90: vals[Math.floor(vals.length * 0.9)] };
+// ---------------------------------------------- comparison scope (global) ---
+// One switcher changes the benchmark across every panel: England, the council's
+// ONS region, or its authority class. Everything downstream reads these helpers.
+let benchmarkScope = "england";
+let currentRegion = null;      // region of the selected council
+let currentClass = null;       // la_class of the selected council
+
+function scopeCouncils(c) {
+  const all = Object.values(DATA.councils);
+  if (benchmarkScope === "region" && c.region) return all.filter((x) => x.region === c.region);
+  if (benchmarkScope === "type" && c.la_class) return all.filter((x) => x.la_class === c.la_class);
+  return all;
 }
+
+function scopeLabel(c) {
+  if (benchmarkScope === "region" && c.region) return c.region;
+  if (benchmarkScope === "type" && c.la_class)
+    return (c.la_class_label || "councils").replace(/\s*\(.*\)$/, "");
+  return "England";
+}
+
+function medianOf(vals) {
+  const v = vals.filter((x) => x != null).slice().sort((a, b) => a - b);
+  if (!v.length) return null;
+  const m = Math.floor(v.length / 2);
+  return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
+}
+
+// rank within a scope: 1 = best (fewer values strictly better, +1)
+function rankIn(val, vals, lowerBetter) {
+  if (val == null) return null;
+  const ok = vals.filter((v) => v != null);
+  if (!ok.length) return null;
+  const better = ok.filter((v) => (lowerBetter ? v < val : v > val)).length;
+  return better + 1;
+}
+
+// QoL indicator metadata — the single source of truth for cards, trends and flags.
+const QOL_FIELDS = [
+  { key: "life_expectancy", rankKey: "life_expectancy_rank", label: "Life Expectancy", unit: "yrs", lowerBetter: false, dp: 1, hist: true,
+    note: "Period life expectancy at birth across sexes (ONS 2025)." },
+  { key: "attainment8", rankKey: "attainment8_rank", label: "GCSE Attainment 8", unit: "pts", lowerBetter: false, dp: 1, hist: false,
+    note: "Average GCSE Attainment 8 score per pupil across 8 subjects (DfE 2023/24)." },
+  { key: "rent_affordability", rankKey: "rent_affordability_rank", label: "Rent Affordability", unit: "%", lowerBetter: true, dp: 1, hist: false,
+    note: "Median private rent as a % of median gross full-time earnings (ONS PIPR/ASHE)." },
+  { key: "air_quality_pm25_pct", rankKey: "air_quality_rank", label: "Air Quality (PM2.5)", unit: "%", lowerBetter: true, dp: 2, hist: true,
+    note: "Estimated % of adult all-cause mortality attributable to human-made fine particulate air pollution PM2.5 (Defra/OHID)." },
+  { key: "child_poverty_pct", rankKey: "child_poverty_rank", label: "Child Poverty", unit: "%", lowerBetter: true, dp: 1, hist: true,
+    note: "Share of children aged under 16 living in families in relative low income (DWP)." },
+  { key: "claimant_rate_pct", rankKey: "claimant_rate_rank", label: "Claimant Rate", unit: "%", lowerBetter: true, dp: 1, hist: false,
+    note: "Universal Credit / JSA claimants as a % of resident population aged 16-64 (Nomis July 2026)." },
+  { key: "crime_per_1000", rankKey: "crime_rank", label: "Crime Rate", unit: "", lowerBetter: true, dp: 1, hist: false,
+    note: "Total recorded offences (excluding fraud) per 1,000 residents (ONS CSP 2024)." },
+  { key: "house_earnings", rankKey: "house_earnings_rank", label: "House / Earnings", unit: "×", lowerBetter: true, dp: 1, hist: false,
+    note: "Mean house price ÷ median gross full-time annual pay (HPI/ASHE). Lower is more affordable." },
+];
+const QOL_BY_KEY = Object.fromEntries(QOL_FIELDS.map((f) => [f.key, f]));
+
+function fmtQolVal(field, v) {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (field.key === "crime_per_1000") return n.toFixed(field.dp);
+  const unit = field.unit || "";
+  if (unit === "%" || unit === "×") return n.toFixed(field.dp) + unit;
+  return n.toFixed(field.dp) + (unit ? " " + unit : "");
+}
+
+// ---------------------------------------------- QoL history (lazy) ---
+let QOL_HISTORY = null;
+let qolHistoryPromise = null;
+function loadQolHistory() {
+  if (QOL_HISTORY) return Promise.resolve(QOL_HISTORY);
+  if (qolHistoryPromise) return qolHistoryPromise;
+  qolHistoryPromise = fetch("qol_history.json?v=20261012d")
+    .then((r) => r.json())
+    .then((d) => { QOL_HISTORY = d; return d; })
+    .catch(() => (QOL_HISTORY = null));
+  return qolHistoryPromise;
+}
+
+let qolTrendMode = "value"; // "value" | "rank"
+
+// Global comparison switcher: England / region / authority class.
+function renderBenchmarkBar(c) {
+  const bar = el("benchmark-bar");
+  const tog = el("benchmark-toggle");
+  if (!bar || !tog) return;
+  const opts = [{ id: "england", label: `England (${QOL_N})` }];
+  if (c.region) {
+    const n = Object.values(DATA.councils).filter((x) => x.region === c.region).length;
+    opts.push({ id: "region", label: `${c.region} (${n})` });
+  }
+  if (c.la_class) {
+    const n = Object.values(DATA.councils).filter((x) => x.la_class === c.la_class).length;
+    const short = (c.la_class_label || "Type").replace(/\s*\(.*\)$/, "");
+    opts.push({ id: "type", label: `${short} (${n})` });
+  }
+  if (!opts.some((o) => o.id === benchmarkScope)) benchmarkScope = "england";
+  tog.innerHTML = opts.map((o) =>
+    `<button class="toggle-btn${o.id === benchmarkScope ? " active" : ""}" data-scope="${o.id}">${o.label}</button>`
+  ).join("");
+  tog.querySelectorAll(".toggle-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      benchmarkScope = btn.dataset.scope;
+      const cur = DATA.councils[currentCouncilName];
+      if (cur) {
+        renderBenchmarkBar(cur);
+        renderQoL(cur);
+        renderFinances(cur);
+        renderStandout(cur);
+      }
+    });
+  });
+  bar.style.display = "";
+}
+
+function initQolModeToggle() {
+  const tog = el("qol-mode-toggle");
+  if (!tog) return;
+  tog.querySelectorAll(".toggle-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      qolTrendMode = btn.dataset.qolMode;
+      tog.querySelectorAll(".toggle-btn").forEach((b) => b.classList.toggle("active", b === btn));
+      const cur = DATA.councils[currentCouncilName];
+      if (cur && QOL_HISTORY) renderQolTrends(cur, QOL_HISTORY);
+    });
+  });
+}
+
+
 
 // Statutory/demand-led services (children's education incl. the ring-fenced
 // Dedicated Schools Grant, and adult/children's social care) are determined by
@@ -474,6 +598,15 @@ function renderStandout(c) {
   if (!box) return;
   const q = c.qol || {};
   const badges = [];
+  const scope = scopeCouncils(c);
+  const label = scopeLabel(c);
+  const sN = scope.filter((x) => x.qol).length || QOL_N;
+  const sRank = (key, lowerBetter) =>
+    rankIn(q[key], scope.map((x) => (x.qol ? x.qol[key] : null)), lowerBetter);
+  const fmtShort = (key, v) => {
+    const f = QOL_BY_KEY[key];
+    return f ? fmtQolVal(f, v) : v;
+  };
 
   // Financial distress first — the most consequential signal.
   const d = c.financial_distress;
@@ -483,35 +616,43 @@ function renderStandout(c) {
       : { cls: "crit", icon: "⚡", text: `Exceptional Financial Support${d.efs_amount_gbp_m != null ? " (£" + d.efs_amount_gbp_m + "m)" : ""}` });
   }
 
-  // Crime — both extremes are worth flagging.
-  if (q.crime_rank != null) {
-    if (q.crime_rank >= QOL_N * 0.8) badges.push({ cls: "bad", icon: "🚨", text: `High crime: ${q.crime_per_1000}/1k (#${q.crime_rank})` });
-    else if (q.crime_rank <= QOL_N * 0.2) badges.push({ cls: "good", icon: "🟢", text: `Low crime: ${q.crime_per_1000}/1k (#${q.crime_rank})` });
+  // Crime — both extremes are worth flagging (ranked within the active scope).
+  const crimeRank = sRank("crime_per_1000", true);
+  if (crimeRank != null) {
+    if (crimeRank >= sN * 0.8) badges.push({ cls: "bad", icon: "🚨", text: `High crime: ${q.crime_per_1000}/1k (#${crimeRank} of ${sN})` });
+    else if (crimeRank <= sN * 0.2) badges.push({ cls: "good", icon: "🟢", text: `Low crime: ${q.crime_per_1000}/1k (#${crimeRank} of ${sN})` });
   }
 
   // Housing affordability pressure.
-  if (q.rent_affordability_rank != null) {
-    if (q.rent_affordability_rank >= QOL_N * 0.8) badges.push({ cls: "bad", icon: "🚨", text: `Severe rent strain: ${q.rent_affordability}% of pay (#${q.rent_affordability_rank})` });
-    else if (q.rent_affordability_rank <= QOL_N * 0.2) badges.push({ cls: "good", icon: "🟢", text: `Affordable rents: ${q.rent_affordability}% of pay (#${q.rent_affordability_rank})` });
+  const rentRank = sRank("rent_affordability", true);
+  if (rentRank != null) {
+    if (rentRank >= sN * 0.8) badges.push({ cls: "bad", icon: "🚨", text: `Severe rent strain: ${q.rent_affordability}% of pay (#${rentRank} of ${sN})` });
+    else if (rentRank <= sN * 0.2) badges.push({ cls: "good", icon: "🟢", text: `Affordable rents: ${q.rent_affordability}% of pay (#${rentRank} of ${sN})` });
   }
 
   // Child poverty.
-  if (q.child_poverty_rank != null && q.child_poverty_rank >= QOL_N * 0.8)
-    badges.push({ cls: "bad", icon: "🚩", text: `High child poverty: ${q.child_poverty_pct}% (#${q.child_poverty_rank})` });
+  const cpRank = sRank("child_poverty_pct", true);
+  if (cpRank != null && cpRank >= sN * 0.8)
+    badges.push({ cls: "bad", icon: "🚩", text: `High child poverty: ${q.child_poverty_pct}% (#${cpRank} of ${sN})` });
 
   // House price vs local earnings (rank 1 = most affordable).
-  if (q.house_earnings != null && q.house_earnings_rank != null) {
+  const heRank = sRank("house_earnings", true);
+  if (q.house_earnings != null && heRank != null) {
     const priceTxt = q.house_price != null ? `£${Math.round(q.house_price).toLocaleString("en-GB")} · ` : "";
-    if (q.house_earnings_rank >= QOL_N * 0.8) badges.push({ cls: "bad", icon: "🏠", text: `Expensive to buy: ${priceTxt}${q.house_earnings}× pay (#${q.house_earnings_rank})` });
-    else if (q.house_earnings_rank <= QOL_N * 0.2) badges.push({ cls: "good", icon: "🏠", text: `Affordable to buy: ${priceTxt}${q.house_earnings}× pay (#${q.house_earnings_rank})` });
+    if (heRank >= sN * 0.8) badges.push({ cls: "bad", icon: "🏠", text: `Expensive to buy: ${priceTxt}${q.house_earnings}× pay (#${heRank} of ${sN})` });
+    else if (heRank <= sN * 0.2) badges.push({ cls: "good", icon: "🏠", text: `Affordable to buy: ${priceTxt}${q.house_earnings}× pay (#${heRank} of ${sN})` });
   }
 
-  // Borrowing per resident vs national deciles.
+  // Borrowing per resident vs the active scope's deciles.
   const b = c.borrowing;
-  const { p10, p90 } = borrowingPercentiles();
-  if (b && b.per_resident != null && p90 != null) {
-    if (b.per_resident >= p90) badges.push({ cls: "bad", icon: "🔴", text: `Heavy debt: £${Math.round(b.per_resident).toLocaleString("en-GB")}/resident` });
-    else if (b.per_resident <= p10) badges.push({ cls: "good", icon: "🟢", text: `Low debt: £${Math.round(b.per_resident).toLocaleString("en-GB")}/resident` });
+  if (b && b.per_resident != null) {
+    const bvals = scope.map((x) => (x.borrowing ? x.borrowing.per_resident : null)).filter((v) => v != null).sort((a, z) => a - z);
+    if (bvals.length) {
+      const p10 = bvals[Math.floor(bvals.length * 0.1)];
+      const p90 = bvals[Math.floor(bvals.length * 0.9)];
+      if (b.per_resident >= p90) badges.push({ cls: "bad", icon: "🔴", text: `Heavy debt: £${Math.round(b.per_resident).toLocaleString("en-GB")}/resident` });
+      else if (b.per_resident <= p10) badges.push({ cls: "good", icon: "🟢", text: `Low debt: £${Math.round(b.per_resident).toLocaleString("en-GB")}/resident` });
+    }
   }
 
   // Talk-vs-spend disconnect (the "receipts" check) — discretionary services only,
@@ -523,15 +664,29 @@ function renderStandout(c) {
   if (gap && p80 != null && Math.abs(gap.spend_pct - gap.discussion_pct) >= p80)
     badges.push({ cls: "warn", icon: "⚡", text: `${gap.topic}: ${gap.spend_pct.toFixed(0)}% of spend, ${gap.discussion_pct.toFixed(0)}% of debate` });
 
+  // Quality-of-life trends: materially improved/worsened since the earliest year.
+  (c.qol_trends || []).forEach((t) => {
+    const f = QOL_BY_KEY[t.metric];
+    if (!f) return;
+    const worse = t.direction === "worse";
+    const u = (f.unit === "%" || f.unit === "×") ? f.unit : (f.unit ? " " + f.unit : "");
+    const ch = (t.change > 0 ? "+" : "") + t.change.toFixed(1);
+    badges.push({
+      cls: worse ? "bad" : "good",
+      icon: worse ? "📉" : "📈",
+      text: `QoL ${worse ? "worsening" : "improving"}: ${f.label} (${ch}${u})`,
+    });
+  });
+
   // Recent change of political control — a governance signal worth surfacing.
   const ctrl = c.control;
   if (ctrl && ctrl.changed && ctrl.since_year >= 2025)
     badges.push({ cls: "warn", icon: "🗳", text: `Control changed ${ctrl.since}: now ${ctrl.current}` });
 
-  const shown = badges.slice(0, 5);
+  const shown = badges.slice(0, 6);
   box.innerHTML = shown.length
     ? shown.map((b2) => `<span class="standout-badge ${b2.cls}" data-rubric="1" title="Click to see how this flag is calculated"><span class="standout-icon">${b2.icon}</span>${b2.text}</span>`).join("")
-    : `<span class="standout-badge neutral">No standout national extremes for this council.</span>`;
+    : `<span class="standout-badge neutral">No standout extremes for this council in ${label}.</span>`;
   box.querySelectorAll(".standout-badge[data-rubric]").forEach((pill) => {
     pill.addEventListener("click", () => openModal("rubric-modal"));
   });
@@ -553,6 +708,7 @@ function buildCitizenBriefing(c) {
   const L = [];
   L.push(`# Citizen briefing: ${name} (${c.ons_code || "n/a"})`);
   L.push(`- Tier: ${c.la_class_label || c.tier || "n/a"}${c.parent_county ? " (part of " + c.parent_county + ")" : ""}`);
+  if (c.region) L.push(`- ONS region: ${c.region}`);
   L.push(`- Political control: ${c.party_full || c.party || "n/a"}`);
   if (c.control && c.control.changed)
     L.push(`- Control history: ${c.control.current} since ${c.control.since}` + (c.control.previous ? " (previously " + c.control.previous + ")" : ""));
@@ -561,35 +717,46 @@ function buildCitizenBriefing(c) {
   L.push(`- Population: ${c.population != null ? c.population.toLocaleString("en-GB") : "n/a"}`);
   L.push("");
 
-  L.push(`## Outcomes vs median council (rank out of ${QOL_N}; #1 = best)`);
-  const qrow = [
-    ["Life expectancy (yrs)", q.life_expectancy, q.life_expectancy_rank, eng.life_expectancy, "ONS 2025"],
-    ["GCSE Attainment 8 (pts)", q.attainment8, q.attainment8_rank, eng.attainment8, "DfE 2023/24"],
-    ["Rent affordability (% of pay)", q.rent_affordability, q.rent_affordability_rank, eng.rent_affordability, "ONS PIPR/ASHE"],
-    ["Child poverty (%)", q.child_poverty_pct, q.child_poverty_rank, eng.child_poverty_pct, "DWP"],
-    ["Claimant rate (%)", q.claimant_rate_pct, q.claimant_rate_rank, eng.claimant_rate_pct, "Nomis 2026"],
-    ["Crime per 1,000", q.crime_per_1000, q.crime_rank, eng.crime_per_1000, "ONS CSP 2024"],
-    ["Air quality (PM2.5, % of deaths)", q.air_quality_pm25_pct, q.air_quality_rank, eng.air_quality_pm25_pct, "Defra/OHID"],
-    ["House price / earnings (×)", q.house_earnings, q.house_earnings_rank, eng.house_earnings, "HPI/ASHE"],
-  ];
-  qrow.forEach(([label, val, rank, engVal, src]) => {
+  const scope = scopeCouncils(c);
+  const label = scopeLabel(c);
+  L.push(`## Outcomes vs ${label} (#1 = best in the group)`);
+  QOL_FIELDS.forEach((f) => {
+    const val = q[f.key];
     if (val == null) return;
+    const vals = scope.map((x) => (x.qol ? x.qol[f.key] : null));
+    const n = vals.filter((v) => v != null).length;
+    const med = medianOf(vals);
+    const rank = rankIn(val, vals, f.lowerBetter);
     const parts = [`${val}`];
-    if (rank != null) parts.push(`rank #${rank} of ${QOL_N}`);
-    if (engVal != null) parts.push(`median council ${engVal}`);
-    L.push(`- ${label}: ${parts.join("; ")} (${src})`);
+    if (rank != null) parts.push(`rank #${rank} of ${n}`);
+    if (med != null) parts.push(`${label} median ${med}`);
+    L.push(`- ${f.label}: ${parts.join("; ")}`);
   });
   L.push("- Note: crime per 1,000 residents is inflated in city/town centres by commuters, shoppers and nightlife who are counted in offences but not in residents.");
   L.push("");
+
+  const trends = c.qol_trends || [];
+  if (trends.length) {
+    L.push("## Quality-of-life trends (OHID Fingertips annual series)");
+    trends.forEach((t) => {
+      const f = QOL_BY_KEY[t.metric];
+      if (!f) return;
+      L.push(`- ${f.label}: ${t.direction} — ${t.change > 0 ? "+" : ""}${t.change} since the earliest year (change in the best/worst ~10% of councils)`);
+    });
+    L.push("");
+  }
 
   L.push("## Financial health (benchmarked)");
   L.push(`- Distress: ${d.severity >= 2 ? d.distress_status : "No active Section 114 notice or EFS intervention"}`);
   if (d.is_efs && d.efs_amount_gbp_m != null) L.push(`- Exceptional Financial Support: £${d.efs_amount_gbp_m}m`);
   if (b.per_resident != null) {
+    const bvals = scope.map((x) => (x.borrowing ? x.borrowing.per_resident : null));
+    const bn = bvals.filter((v) => v != null).length;
+    const brank = rankIn(b.per_resident, bvals, true);
+    const bmed = medianOf(bvals);
     const parts = [`£${Math.round(b.per_resident).toLocaleString("en-GB")} per resident`];
-    if (b.rank != null) parts.push(`rank #${b.rank} of ${be.n || QOL_N} highest`);
-    if (be.mean_per_resident != null) parts.push(`England avg £${Math.round(be.mean_per_resident).toLocaleString("en-GB")}`);
-    if (be.median_per_resident != null) parts.push(`England median £${Math.round(be.median_per_resident).toLocaleString("en-GB")}`);
+    if (brank != null) parts.push(`rank #${brank} of ${bn} highest in ${label}`);
+    if (bmed != null) parts.push(`${label} median £${Math.round(bmed).toLocaleString("en-GB")}`);
     L.push(`- Borrowing: ${parts.join("; ")}${b.total_gbp_m != null ? ` (total £${Math.round(b.total_gbp_m).toLocaleString("en-GB")}m)` : ""}`);
     L.push("  (MHCLG Q1 2026/27. Total outstanding loans incl. PWLB/commercial; mixes General Fund and Housing Revenue Account debt, so partly rent-serviced.)");
   }
@@ -620,10 +787,10 @@ function buildCitizenBriefing(c) {
   }
 
   L.push("## Ask");
-  L.push("You are advising a local resident on this council. Using ONLY the verified figures and peer benchmarks above (outcome comparisons are against the median English council, not the national aggregate):");
-  L.push("1. Give three sharp, specific questions I can put to my councillor at their next surgery, grounded in the gap between this council and the median council or in its debt rank.");
+  L.push(`You are advising a local resident on this council. Using ONLY the verified figures and peer benchmarks above (outcome comparisons are against the median of ${label}, the active comparison group):`);
+  L.push("1. Give three sharp, specific questions I can put to my councillor at their next surgery, grounded in the gap between this council and the group median or in its debt rank.");
   L.push("2. Identify the single biggest fiscal or governance risk visible in these figures, contrasting debt, budget concentration and outcomes against the benchmarks.");
-  L.push("3. Summarise how this area compares with England overall, and flag where the commuter-inflation or schools-grant caveats apply.");
+  L.push(`3. Summarise how this area compares with ${label}, and flag where the commuter-inflation or schools-grant caveats apply.`);
   L.push("If a question needs data not provided here (such as usable reserves or Ofsted/inspection grades), say explicitly what is missing rather than guessing.");
   return L.join("\n");
 }
@@ -695,37 +862,72 @@ function fmtGbpFull(gbp) {
   return "£" + Math.round(gbp).toLocaleString("en-GB");
 }
 
-// -------------------------------------------------- borrowing & debt ---
-function renderBorrowing(c) {
+// ------------------------------------------- financial health & debt ---
+// One panel: statutory standing (Section 114 / EFS) + the debt the council carries.
+function distressBannerHtml(d) {
+  if (!d) return "";
+  if (d.severity === 3) {
+    return `<div class="distress-banner critical">
+        <div class="distress-status-header"><span class="distress-icon">⚠️</span>
+          <strong>CRITICAL FINANCIAL DISTRESS: Section 114 Notice Issued (${d.s114_year || "Active"})</strong></div>
+        <p class="distress-desc">${d.s114_details || ""}</p>
+        ${d.is_efs ? `<p class="distress-extra"><strong>Government Intervention:</strong> ${d.efs_details || ""}</p>` : ""}
+      </div>`;
+  }
+  if (d.severity === 2) {
+    return `<div class="distress-banner high">
+        <div class="distress-status-header"><span class="distress-icon">⚡</span>
+          <strong>HIGH FINANCIAL RISK: Exceptional Financial Support (£${d.efs_amount_gbp_m}m)</strong></div>
+        <p class="distress-desc">${d.efs_details || ""}</p>
+      </div>`;
+  }
+  if (d.severity === 1) {
+    return `<div class="distress-banner warning">
+        <div class="distress-status-header"><span class="distress-icon">ℹ️</span>
+          <strong>ELEVATED AUDIT RISK: Statutory External Warning / Account Delays</strong></div>
+        <p class="distress-desc">Under statutory external auditor recommendation or commissioner monitoring.</p>
+      </div>`;
+  }
+  return `<div class="distress-banner stable">
+      <div class="distress-status-header"><span class="distress-icon">✓</span>
+        <strong>STABLE FINANCIAL STANDING</strong></div>
+      <p class="distress-desc">No active Section 114 spending freeze notices or emergency MHCLG Exceptional Financial Support directions recorded.</p>
+    </div>`;
+}
+
+function renderFinances(c) {
   const b = c.borrowing;
-  const panel = el("panel-borrowing");
-  showPanel("panel-borrowing", !!b);
-  if (!b) return;
+  const d = c.financial_distress;
+  showPanel("panel-finances", !!(b || d));
+  if (!b && !d) return;
+
+  el("finances-status-box").innerHTML = distressBannerHtml(d);
+
+  const scope = scopeCouncils(c);
+  const scopeVals = scope.map((x) => (x.borrowing ? x.borrowing.per_resident : null));
+  const scopeN = scopeVals.filter((v) => v != null).length;
+  const scopeMed = medianOf(scopeVals);
+  const scopeRank = b && b.per_resident != null ? rankIn(b.per_resident, scopeVals, true) : null;
+  const label = scopeLabel(c);
+
   const eng = DATA.borrowing_england || {};
   const engAvg = eng.mean_per_resident;
-  const engMed = eng.median_per_resident;
-  const rank = b.rank;
-  const rankTxt = rank != null ? `Rank #${rank} of ${eng.n || QOL_N} highest` : "";
-  const engLine = [
-    rankTxt,
-    engAvg != null ? `England avg £${Math.round(engAvg).toLocaleString("en-GB")}` : "",
-    engMed != null ? `median £${Math.round(engMed).toLocaleString("en-GB")}` : "",
-  ].filter(Boolean).join(" · ");
+
   const cards = [
     {
       label: "Total outstanding debt",
-      value: fmtGbpM(b.total_gbp_m),
+      value: b && b.total_gbp_m != null ? fmtGbpM(b.total_gbp_m) : "—",
       corner: engAvg != null ? `England avg £${Math.round(engAvg).toLocaleString("en-GB")}/resident` : "",
       sub: "all loan & securities categories (MHCLG)",
     },
     {
       label: "Debt per resident",
-      value: b.per_resident != null ? "£" + Math.round(b.per_resident).toLocaleString("en-GB") : "—",
-      corner: rank != null ? `Rank #${rank} of ${eng.n || QOL_N} highest` : "",
-      sub: engLine,
+      value: b && b.per_resident != null ? "£" + Math.round(b.per_resident).toLocaleString("en-GB") : "—",
+      corner: scopeRank != null ? `Rank #${scopeRank} of ${scopeN} in ${label}` : "",
+      sub: scopeMed != null ? `${label} median £${Math.round(scopeMed).toLocaleString("en-GB")}/resident` : "",
     },
   ];
-  el("borrowing-body").innerHTML = cards.map((card) => `
+  el("finances-body").innerHTML = cards.map((card) => `
     <div class="stat-card">
       <div class="stat-header">
         <span class="stat-label">${card.label}</span>
@@ -734,6 +936,26 @@ function renderBorrowing(c) {
       <div class="stat-value">${card.value}</div>
       <div class="stat-sub">${card.sub}</div>
     </div>`).join("");
+
+  // Synthesis: join the two signals into one read.
+  const synth = el("finances-synth");
+  if (synth && b && b.per_resident != null) {
+    const heavy = scopeRank != null && scopeRank <= Math.max(1, scopeN * 0.25);
+    const light = scopeRank != null && scopeRank >= scopeN * 0.75;
+    const stable = !d || d.severity === 0;
+    let txt;
+    if (stable && heavy)
+      txt = `Stable statutory standing, but among the most indebted in ${label} — debt servicing absorbs a large share of discretionary income.`;
+    else if (stable && light)
+      txt = `Stable statutory standing and low borrowing by ${label} standards.`;
+    else if (!stable)
+      txt = `Elevated financial risk on the statutory registers; debt position is a secondary consideration.`;
+    else
+      txt = `Stable statutory standing with a mid-range debt position for ${label}.`;
+    synth.textContent = txt;
+  } else if (synth) {
+    synth.textContent = "";
+  }
 }
 
 // ---------------------------------------------------- top contracts ---
@@ -764,7 +986,7 @@ function renderContracts(c) {
       <tbody>${body}</tbody>
     </table>
     <p class="contracts-total">Combined value of the awards shown: <strong>${fmtAward(total)}</strong> <span class="contracts-window">(awards dated 2025–2026)</span></p>
-    <p class="contracts-note">Each row is a single contract award; the supplier links to that award notice on Contracts Finder (the UK government's public register). Values are as published and can include multi-year frameworks. <a href="${contractsFinderUrl(councilQuery + " Council")}" target="_blank" rel="noopener">See all ${councilQuery} awards →</a></p>`;
+    <p class="contracts-note">Each row is a single contract award; the supplier links to that award notice on Contracts Finder (the UK government's public register). Values are as published and can include multi-year frameworks. Only awards where <strong>the council itself</strong> is the named buyer are shown — procurement by arms-length bodies (housing ALMOs such as Barnet Homes, council-owned trading companies, joint waste partnerships) publishes under those entities' own names and is not counted here. <a href="${contractsFinderUrl(councilQuery + " Council")}" target="_blank" rel="noopener">See all ${councilQuery} awards →</a></p>`;
 }
 
 function renderPopulation(c) {
@@ -1094,158 +1316,145 @@ function decileColor(decile) {
   return t < 0.5 ? lerpHex(GOOD, MID, t * 2) : lerpHex(MID, BAD, (t - 0.5) * 2);
 }
 
-function renderDistress(c) {
-  const d = c.financial_distress;
-  showPanel("panel-distress", !!d);
-  if (!d) return;
-
-  const box = el("distress-status-box");
-  let statusHtml = "";
-  if (d.severity === 3) {
-    statusHtml = `
-      <div class="distress-banner critical">
-        <div class="distress-status-header">
-          <span class="distress-icon">⚠️</span>
-          <strong>CRITICAL FINANCIAL DISTRESS: Section 114 Notice Issued (${d.s114_year || "Active"})</strong>
-        </div>
-        <p class="distress-desc">${d.s114_details}</p>
-        ${d.is_efs ? `<p class="distress-extra"><strong>Government Intervention:</strong> ${d.efs_details}</p>` : ""}
-      </div>`;
-  } else if (d.severity === 2) {
-    statusHtml = `
-      <div class="distress-banner high">
-        <div class="distress-status-header">
-          <span class="distress-icon">⚡</span>
-          <strong>HIGH FINANCIAL RISK: Exceptional Financial Support (£${d.efs_amount_gbp_m}m)</strong>
-        </div>
-        <p class="distress-desc">${d.efs_details}</p>
-      </div>`;
-  } else if (d.severity === 1) {
-    statusHtml = `
-      <div class="distress-banner warning">
-        <div class="distress-status-header">
-          <span class="distress-icon">ℹ️</span>
-          <strong>ELEVATED AUDIT RISK: Statutory External Warning / Account Delays</strong>
-        </div>
-        <p class="distress-desc">Under statutory external auditor recommendation or commissioner monitoring.</p>
-      </div>`;
-  } else {
-    statusHtml = `
-      <div class="distress-banner stable">
-        <div class="distress-status-header">
-          <span class="distress-icon">✓</span>
-          <strong>STABLE FINANCIAL STANDING</strong>
-        </div>
-        <p class="distress-desc">No active Section 114 spending freeze notices or emergency MHCLG Exceptional Financial Support directions recorded.</p>
-      </div>`;
-  }
-  box.innerHTML = statusHtml;
-}
-
+// ---------------------------------------------------- quality of life ---
 function renderQoL(c) {
   const q = c.qol;
   showPanel("panel-qol", !!q);
   if (!q) return;
 
-  const eng = DATA.qol_benchmark || DATA.qol_england || {};
+  const scope = scopeCouncils(c);
+  const label = scopeLabel(c);
 
-  // 7 Outcome Indicators
-  const items = [
-    {
-      label: "Life Expectancy",
-      val: q.life_expectancy != null ? `${q.life_expectancy} yrs` : "—",
-      rank: q.life_expectancy_rank,
-      eng: eng.life_expectancy != null ? `${eng.life_expectancy} yrs` : "82.3 yrs",
-      note: "Period life expectancy at birth across sexes (ONS 2025).",
-      higherGood: true,
-      valNum: q.life_expectancy,
-      engNum: eng.life_expectancy || 82.3,
-    },
-    {
-      label: "GCSE Attainment 8",
-      val: q.attainment8 != null ? `${q.attainment8} pts` : "—",
-      rank: q.attainment8_rank,
-      eng: eng.attainment8 != null ? `${eng.attainment8} pts` : "45.5 pts",
-      note: "Average GCSE Attainment 8 score per pupil across 8 subjects (DfE 2023/24).",
-      higherGood: true,
-      valNum: q.attainment8,
-      engNum: eng.attainment8 || 45.5,
-    },
-    {
-      label: "Rent Affordability",
-      val: q.rent_affordability != null ? `${q.rent_affordability}%` : "—",
-      rank: q.rent_affordability_rank,
-      eng: eng.rent_affordability != null ? `${eng.rent_affordability}%` : "32.7%",
-      note: "Median private rent as a % of median gross full-time earnings (ONS PIPR/ASHE).",
-      higherGood: false,
-      valNum: q.rent_affordability,
-      engNum: eng.rent_affordability || 32.7,
-    },
-    {
-      label: "Air Quality (PM2.5)",
-      val: q.air_quality_pm25_pct != null ? `${q.air_quality_pm25_pct}%` : "—",
-      rank: q.air_quality_rank,
-      eng: eng.air_quality_pm25_pct != null ? `${eng.air_quality_pm25_pct}%` : "5.2%",
-      note: "Estimated % of adult all-cause mortality attributable to human-made fine particulate air pollution PM2.5 (Defra/OHID).",
-      higherGood: false,
-      valNum: q.air_quality_pm25_pct,
-      engNum: eng.air_quality_pm25_pct || 5.2,
-    },
-    {
-      label: "Child Poverty",
-      val: q.child_poverty_pct != null ? `${q.child_poverty_pct}%` : "—",
-      rank: q.child_poverty_rank,
-      eng: eng.child_poverty_pct != null ? `${eng.child_poverty_pct}%` : "16.7%",
-      note: "Share of children aged under 16 living in families in relative low income (DWP).",
-      higherGood: false,
-      valNum: q.child_poverty_pct,
-      engNum: eng.child_poverty_pct || 16.7,
-    },
-    {
-      label: "Claimant Rate",
-      val: q.claimant_rate_pct != null ? `${q.claimant_rate_pct}%` : "—",
-      rank: q.claimant_rate_rank,
-      eng: eng.claimant_rate_pct != null ? `${eng.claimant_rate_pct}%` : "3.1%",
-      note: "Universal Credit / JSA claimants as a % of resident population aged 16-64 (Nomis July 2026).",
-      higherGood: false,
-      valNum: q.claimant_rate_pct,
-      engNum: eng.claimant_rate_pct || 3.1,
-    },
-    {
-      label: "Crime Rate",
-      val: q.crime_per_1000 != null ? `${q.crime_per_1000}` : "—",
-      rank: q.crime_rank,
-      eng: eng.crime_per_1000 != null ? `${eng.crime_per_1000}` : "79.4",
-      note: "Total recorded offences (excluding fraud) per 1,000 residents (ONS CSP 2024).",
-      higherGood: false,
-      valNum: q.crime_per_1000,
-      engNum: eng.crime_per_1000 || 79.4,
-    },
-  ];
+  const lede = el("qol-lede");
+  if (lede) lede.textContent = `How has this area's quality of life changed over time, and where does it sit today against ${label}?`;
 
-  const cardsHtml = items.map((item) => {
+  // ---- cards (latest snapshot), benchmarked to the active scope ----
+  const cardsHtml = QOL_FIELDS.map((f) => {
+    const val = q[f.key];
+    const scopeVals = scope.map((x) => (x.qol ? x.qol[f.key] : null));
+    const n = scopeVals.filter((v) => v != null).length;
+    const med = medianOf(scopeVals);
+    const rank = rankIn(val, scopeVals, f.lowerBetter);
+
     let diffBadge = "";
-    if (item.valNum != null && item.engNum != null) {
-      const diff = item.valNum - item.engNum;
-      const isBetter = item.higherGood ? diff > 0 : diff < 0;
+    if (val != null && med != null) {
+      const diff = val - med;
+      const isBetter = f.lowerBetter ? diff < 0 : diff > 0;
+      const tol = f.key === "air_quality_pm25_pct" ? 0.1 : 0.2;
       const sign = diff > 0 ? "+" : "";
-      const cls = Math.abs(diff) < 0.2 ? "neutral" : isBetter ? "better" : "worse";
-      diffBadge = `<span class="qol-tag ${cls}">${sign}${diff.toFixed(1)} vs median</span>`;
+      const cls = Math.abs(diff) < tol ? "neutral" : isBetter ? "better" : "worse";
+      diffBadge = `<span class="qol-tag ${cls}">${sign}${diff.toFixed(1)} vs ${label}</span>`;
     }
-    const rankTxt = item.rank != null ? `<span class="qol-rank-tag">Rank #${item.rank} of ${QOL_N}</span>` : "";
+    const rankTxt = rank != null ? `<span class="qol-rank-tag">Rank #${rank} of ${n} in ${label}</span>` : "";
+    const medTxt = med != null ? `${fmtQolVal(f, med)}` : "—";
     return `
       <div class="qol-card">
         <div class="qol-header">
-          <span class="qol-label">${item.label}</span>
+          <span class="qol-label">${f.label}</span>
           ${diffBadge}
         </div>
-        <div class="qol-value">${item.val}</div>
-        <div class="qol-benchmark">${rankTxt} · Median council: <strong>${item.eng}</strong></div>
-        <div class="qol-sub">${item.note}</div>
+        <div class="qol-value">${fmtQolVal(f, val)}</div>
+        <div class="qol-benchmark">${rankTxt} · ${label} median: <strong>${medTxt}</strong></div>
+        <div class="qol-sub">${f.note}</div>
       </div>`;
   }).join("");
-
   el("qol-grid").innerHTML = cardsHtml;
+
+  // ---- trends by default ----
+  loadQolHistory().then((hist) => renderQolTrends(c, hist));
+}
+
+// Compact OWID-style line chart: council (blue) vs scope benchmark (grey dashed).
+function _svgSegs(vals, xf, yf) {
+  const segs = [];
+  let cur = [];
+  vals.forEach((v, i) => {
+    if (v == null) { if (cur.length) { segs.push(cur); cur = []; } return; }
+    cur.push(`${xf(i).toFixed(1)},${yf(v).toFixed(1)}`);
+  });
+  if (cur.length) segs.push(cur);
+  return segs;
+}
+
+function qolTrendCard(f, series, benchVals, periods, mode, label) {
+  const W = 300, H = 132, padL = 6, padR = 58, padT = 12, padB = 18;
+  const iw = W - padL - padR, ih = H - padT - padB;
+  const useRank = mode === "rank";
+
+  const council = useRank ? series.r : series.v;
+  const bench = useRank ? null : benchVals;
+  const nPts = periods.length;
+  const xf = (i) => padL + (nPts <= 1 ? iw / 2 : (i / (nPts - 1)) * iw);
+
+  const pool = (council || []).concat(bench || []).filter((v) => v != null);
+  if (!pool.length) return "";
+  let lo = Math.min(...pool), hi = Math.max(...pool);
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const pad = (hi - lo) * 0.12;
+  lo -= pad; hi += pad;
+  // rank mode: rank 1 at top (invert)
+  const yf = useRank
+    ? (v) => padT + ((v - 1) / Math.max(1, QOL_N - 1)) * ih
+    : (v) => padT + (1 - (v - lo) / (hi - lo)) * ih;
+
+  const grid = [0, 0.5, 1].map((t) => {
+    const y = padT + t * ih;
+    return `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${(padL + iw).toFixed(1)}" y2="${y.toFixed(1)}" stroke="#eee" stroke-width="1"/>`;
+  }).join("");
+
+  const benchPath = bench
+    ? _svgSegs(bench, xf, yf).map((s) => `<polyline points="${s.join(" ")}" fill="none" stroke="#9a9a9a" stroke-width="1.5" stroke-dasharray="3 3"/>`).join("")
+    : `<line x1="${padL}" y1="${yf((QOL_N + 1) / 2).toFixed(1)}" x2="${(padL + iw).toFixed(1)}" y2="${yf((QOL_N + 1) / 2).toFixed(1)}" stroke="#9a9a9a" stroke-width="1.5" stroke-dasharray="3 3"/>`;
+
+  const councilPath = _svgSegs(council, xf, yf).map((s) => `<polyline points="${s.join(" ")}" fill="none" stroke="#4C6A9C" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`).join("");
+
+  // end label: latest non-null
+  let lastI = -1;
+  (council || []).forEach((v, i) => { if (v != null) lastI = i; });
+  let endLabel = "";
+  if (lastI >= 0) {
+    const lv = council[lastI];
+    const txt = useRank ? `#${lv}` : fmtQolVal(f, lv);
+    endLabel = `<text x="${(xf(lastI) + 5).toFixed(1)}" y="${(yf(lv) + 3.5).toFixed(1)}" font-size="11" font-weight="700" fill="#4C6A9C">${txt}</text>`;
+  }
+
+  const x0 = periods[0], x1 = periods[nPts - 1];
+  return `
+    <div class="qol-trend-card">
+      <div class="qol-trend-head">
+        <span class="qol-trend-name">${f.label}</span>
+      </div>
+      <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${f.label} trend">
+        ${grid}${benchPath}${councilPath}${endLabel}
+      </svg>
+      <div class="qol-trend-foot"><span>${x0}</span><span>${x1}</span></div>
+    </div>`;
+}
+
+function renderQolTrends(c, hist) {
+  const box = el("qol-trends");
+  if (!box) return;
+  if (!hist || !hist.metrics || !c.ons_code) { box.innerHTML = ""; return; }
+  const series = hist.councils[c.ons_code] || {};
+  const label = scopeLabel(c);
+
+  // pick the benchmark series for the active scope
+  let benchScope = hist.benchmarks.england;
+  if (benchmarkScope === "region" && c.region && hist.benchmarks.region[c.region]) benchScope = hist.benchmarks.region[c.region];
+  else if (benchmarkScope === "type" && c.la_class && hist.benchmarks.type[c.la_class]) benchScope = hist.benchmarks.type[c.la_class];
+
+  const title = el("qol-trends-title");
+  if (title) title.textContent = qolTrendMode === "rank"
+    ? `National rank over time (1 = best)`
+    : `Trend over time vs ${label}`;
+
+  const cards = QOL_FIELDS.filter((f) => f.hist && series[f.key] && hist.metrics[f.key])
+    .map((f) => {
+      const meta = hist.metrics[f.key];
+      const b = benchScope[f.key] ? benchScope[f.key].v : null;
+      return qolTrendCard(f, series[f.key], b, meta.periods, qolTrendMode, label);
+    }).join("");
+  box.innerHTML = cards;
 }
 
 
@@ -1770,7 +1979,7 @@ let globalIndexPromise = null;
 
 function loadGlobalIndex() {
   if (globalIndexPromise) return globalIndexPromise;
-  globalIndexPromise = fetch("search_index_global.json?v=20261012b")
+  globalIndexPromise = fetch("search_index_global.json?v=20261012d")
     .then((r) => r.json())
     .then((d) => { globalIndex = d; return d; })
     .catch(() => { globalIndex = {}; return {}; });
@@ -1938,6 +2147,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initFeedbackForm();
   initCopyBriefing();
+  initQolModeToggle();
 
   // Instant navigation when clicking any council link in tables
   document.addEventListener("click", (e) => {
@@ -1960,7 +2170,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261012b")
+  fetch("data.json?v=20261012d")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
