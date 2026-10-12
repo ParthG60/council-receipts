@@ -1,6 +1,6 @@
 # Council Receipts
 
-Verified English local-government benchmarking data, 283 councils.
+Verified English local-government benchmarking data, 288 councils.
 Interactive: https://parthgoyal.uk/council-receipts/
 
 ## Plain-text dossiers
@@ -100,6 +100,7 @@ Interactive: https://parthgoyal.uk/council-receipts/
 - [Gosport](https://parthgoyal.uk/council-receipts/dossiers/E07000088.md)
 - [Gravesham](https://parthgoyal.uk/council-receipts/dossiers/E07000109.md)
 - [Great Yarmouth](https://parthgoyal.uk/council-receipts/dossiers/E07000145.md)
+- [Greenwich](https://parthgoyal.uk/council-receipts/dossiers/E09000011.md)
 - [Guildford](https://parthgoyal.uk/council-receipts/dossiers/E07000209.md)
 - [Hackney](https://parthgoyal.uk/council-receipts/dossiers/E09000012.md)
 - [Halton](https://parthgoyal.uk/council-receipts/dossiers/E06000006.md)
@@ -163,6 +164,7 @@ Interactive: https://parthgoyal.uk/council-receipts/
 - [Newark and Sherwood](https://parthgoyal.uk/council-receipts/dossiers/E07000175.md)
 - [Newcastle upon Tyne](https://parthgoyal.uk/council-receipts/dossiers/E08000021.md)
 - [Newcastle-under-Lyme](https://parthgoyal.uk/council-receipts/dossiers/E07000195.md)
+- [Newham](https://parthgoyal.uk/council-receipts/dossiers/E09000025.md)
 - [Norfolk](https://parthgoyal.uk/council-receipts/dossiers/E10000020.md)
 - [North Devon](https://parthgoyal.uk/council-receipts/dossiers/E07000043.md)
 - [North East Derbyshire](https://parthgoyal.uk/council-receipts/dossiers/E07000038.md)
@@ -187,9 +189,11 @@ Interactive: https://parthgoyal.uk/council-receipts/
 - [Plymouth](https://parthgoyal.uk/council-receipts/dossiers/E06000026.md)
 - [Portsmouth](https://parthgoyal.uk/council-receipts/dossiers/E06000044.md)
 - [Preston](https://parthgoyal.uk/council-receipts/dossiers/E07000123.md)
+- [Redbridge](https://parthgoyal.uk/council-receipts/dossiers/E09000026.md)
 - [Redditch](https://parthgoyal.uk/council-receipts/dossiers/E07000236.md)
 - [Reigate and Banstead](https://parthgoyal.uk/council-receipts/dossiers/E07000211.md)
 - [Ribble Valley](https://parthgoyal.uk/council-receipts/dossiers/E07000124.md)
+- [Richmond upon Thames](https://parthgoyal.uk/council-receipts/dossiers/E09000027.md)
 - [Rochdale](https://parthgoyal.uk/council-receipts/dossiers/E08000005.md)
 - [Rochford](https://parthgoyal.uk/council-receipts/dossiers/E07000075.md)
 - [Rother](https://parthgoyal.uk/council-receipts/dossiers/E07000064.md)
@@ -259,6 +263,7 @@ Interactive: https://parthgoyal.uk/council-receipts/
 - [Uttlesford](https://parthgoyal.uk/council-receipts/dossiers/E07000077.md)
 - [Vale of White Horse](https://parthgoyal.uk/council-receipts/dossiers/E07000180.md)
 - [Walsall](https://parthgoyal.uk/council-receipts/dossiers/E08000030.md)
+- [Waltham Forest](https://parthgoyal.uk/council-receipts/dossiers/E09000031.md)
 - [Wandsworth](https://parthgoyal.uk/council-receipts/dossiers/E09000032.md)
 - [Warrington](https://parthgoyal.uk/council-receipts/dossiers/E06000007.md)
 - [Warwick](https://parthgoyal.uk/council-receipts/dossiers/E07000222.md)

@@ -418,7 +418,7 @@ function renderCouncil(name) {
 // ---------------------------------------------- standout benchmark flags ---
 // Instant "what stands out about this council" pills from national ranks.
 // Rank convention in data.json: 1 = best on every QoL indicator.
-let QOL_N = 283;
+let QOL_N = 288;
 
 // ---------------------------------------------- comparison scope (global) ---
 // One switcher changes the benchmark across every panel: England, the council's
@@ -493,7 +493,7 @@ let qolHistoryPromise = null;
 function loadQolHistory() {
   if (QOL_HISTORY) return Promise.resolve(QOL_HISTORY);
   if (qolHistoryPromise) return qolHistoryPromise;
-  qolHistoryPromise = fetch("qol_history.json?v=20261012d")
+  qolHistoryPromise = fetch("qol_history.json?v=20261012e")
     .then((r) => r.json())
     .then((d) => { QOL_HISTORY = d; return d; })
     .catch(() => (QOL_HISTORY = null));
@@ -1979,7 +1979,7 @@ let globalIndexPromise = null;
 
 function loadGlobalIndex() {
   if (globalIndexPromise) return globalIndexPromise;
-  globalIndexPromise = fetch("search_index_global.json?v=20261012d")
+  globalIndexPromise = fetch("search_index_global.json?v=20261012e")
     .then((r) => r.json())
     .then((d) => { globalIndex = d; return d; })
     .catch(() => { globalIndex = {}; return {}; });
@@ -2170,11 +2170,12 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261012d")
+  fetch("data.json?v=20261012e")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
       QOL_N = Object.keys(data.councils || {}).length || QOL_N;
+      document.querySelectorAll(".council-count").forEach((n) => { n.textContent = QOL_N; });
       updateMethodologyEngland();
       initCouncilSelect();
       initOmnibox();
