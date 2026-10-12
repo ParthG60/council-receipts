@@ -1759,7 +1759,7 @@ let globalIndexPromise = null;
 
 function loadGlobalIndex() {
   if (globalIndexPromise) return globalIndexPromise;
-  globalIndexPromise = fetch("search_index_global.json?v=20261007i")
+  globalIndexPromise = fetch("search_index_global.json?v=20261012a")
     .then((r) => r.json())
     .then((d) => { globalIndex = d; return d; })
     .catch(() => { globalIndex = {}; return {}; });
@@ -1949,7 +1949,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261007i")
+  fetch("data.json?v=20261012a")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
