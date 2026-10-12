@@ -607,8 +607,7 @@ function buildCitizenBriefing(c) {
   if (contracts.length) {
     L.push("## Largest published contract awards (Contracts Finder, 2025–2026)");
     contracts.slice(0, 5).forEach((r) => {
-      const n = Math.round(r.n);
-      L.push(`- ${r.supplier}: £${((r.value_gbp || 0) / 1e6).toFixed(1)}m across ${n === 1 ? "1 award" : n + " awards"}${r.latest ? ` (latest ${r.latest})` : ""}`);
+      L.push(`- ${r.supplier}: £${((r.value_gbp || 0) / 1e6).toFixed(1)}m${r.latest ? ` (awarded ${r.latest})` : ""}${r.title ? ` — ${r.title}` : ""}${r.url ? ` — ${r.url}` : ""}`);
     });
     L.push("");
   }
@@ -735,25 +734,23 @@ function renderContracts(c) {
   if (!rows || !rows.length) return;
   const total = rows.reduce((s, r) => s + (r.value_gbp || 0), 0);
   const body = rows.map((r) => {
-    const n = Math.round(r.n);
     const href = r.url || contractsFinderUrl(r.supplier);
     const titleAttr = r.title ? ` title="${r.title.replace(/"/g, "&quot;")}"` : "";
     return `
     <tr>
       <td><a href="${href}" target="_blank" rel="noopener"${titleAttr}>${r.supplier}</a>${r.title ? `<div class="contract-title">${r.title}</div>` : ""}</td>
       <td class="num-cell">${fmtGbpM((r.value_gbp || 0) / 1_000_000)}</td>
-      <td class="num-cell">${n === 1 ? "1 award" : `${n} awards`}</td>
       <td class="num-cell">${r.latest ? r.latest.replace(/-/g, "/") : "—"}</td>
     </tr>`;
   }).join("");
   const councilQuery = currentCouncilName || "";
   el("contracts-body").innerHTML = `
     <table class="league contracts-table">
-      <thead><tr><th>Supplier</th><th class="num-th">Awarded value</th><th class="num-th">Awards</th><th class="num-th">Latest award</th></tr></thead>
+      <thead><tr><th>Supplier</th><th class="num-th">Awarded value</th><th class="num-th">Awarded</th></tr></thead>
       <tbody>${body}</tbody>
     </table>
-    <p class="contracts-total">Combined value of the largest awards shown: <strong>${fmtGbpM(total / 1_000_000)}</strong> <span class="contracts-window">(awards published 2025–2026)</span></p>
-    <p class="contracts-note">Each supplier links to its single largest award notice on Contracts Finder (the UK government's public register). The value is the total awarded to that supplier across its notices in the window and can include multi-year frameworks. <a href="${contractsFinderUrl(councilQuery + " Council")}" target="_blank" rel="noopener">See all ${councilQuery} awards →</a></p>`;
+    <p class="contracts-total">Combined value of the awards shown: <strong>${fmtGbpM(total / 1_000_000)}</strong> <span class="contracts-window">(awards dated 2025–2026)</span></p>
+    <p class="contracts-note">Each row is a single contract award; the supplier links to that award notice on Contracts Finder (the UK government's public register). Values are as published and can include multi-year frameworks. <a href="${contractsFinderUrl(councilQuery + " Council")}" target="_blank" rel="noopener">See all ${councilQuery} awards →</a></p>`;
 }
 
 function renderPopulation(c) {
@@ -1759,7 +1756,7 @@ let globalIndexPromise = null;
 
 function loadGlobalIndex() {
   if (globalIndexPromise) return globalIndexPromise;
-  globalIndexPromise = fetch("search_index_global.json?v=20261012a")
+  globalIndexPromise = fetch("search_index_global.json?v=20261012b")
     .then((r) => r.json())
     .then((d) => { globalIndex = d; return d; })
     .catch(() => { globalIndex = {}; return {}; });
@@ -1949,7 +1946,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261012a")
+  fetch("data.json?v=20261012b")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;

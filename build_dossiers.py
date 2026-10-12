@@ -123,10 +123,11 @@ def dossier(name, c):
         for r in contracts[:5]:
             val = r.get("value_gbp")
             val_s = f"£{val/1_000_000:.1f}m" if val else "n/a"
-            n = int(r.get("n") or 0)
-            line = (f"- {r.get('supplier')}: {val_s} across "
-                    f"{'1 award' if n == 1 else str(n) + ' awards'}"
-                    + (f" (latest {r.get('latest')})" if r.get("latest") else ""))
+            line = f"- {r.get('supplier')}: {val_s}"
+            if r.get("latest"):
+                line += f" (awarded {r['latest']})"
+            if r.get("title"):
+                line += f" — {r['title']}"
             if r.get("url"):
                 line += f" — {r['url']}"
             L.append(line)
