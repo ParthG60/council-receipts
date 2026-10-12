@@ -520,16 +520,22 @@ function renderBenchmarkBar(c) {
   const tog = el("benchmark-toggle");
   if (!bar || !tog) return;
   const opts = [{ id: "england", label: `England (${QOL_N})` }];
-  if (c.region) {
+  // Region and authority-type options are hidden for London boroughs for now: the
+  // "London" region and "London Borough" type are the same 32 councils, so the two
+  // buttons are just clutter. (Non-London councils keep both.)
+  const isLondon = c.region === "London" || c.la_class === "LB";
+  if (c.region && !isLondon) {
     const n = Object.values(DATA.councils).filter((x) => x.region === c.region).length;
     opts.push({ id: "region", label: `${c.region} (${n})` });
   }
-  if (c.la_class) {
+  if (c.la_class && !isLondon) {
     const n = Object.values(DATA.councils).filter((x) => x.la_class === c.la_class).length;
     const short = (c.la_class_label || "Type").replace(/\s*\(.*\)$/, "");
     opts.push({ id: "type", label: `${short} (${n})` });
   }
   if (!opts.some((o) => o.id === benchmarkScope)) benchmarkScope = "england";
+  // Nothing meaningful to switch between (e.g. a London borough) — hide the bar.
+  if (opts.length <= 1) { bar.style.display = "none"; benchmarkScope = "england"; return; }
   tog.innerHTML = opts.map((o) =>
     `<button class="toggle-btn${o.id === benchmarkScope ? " active" : ""}" data-scope="${o.id}">${o.label}</button>`
   ).join("");
@@ -1420,24 +1426,46 @@ function qolTrendCard(f, series, benchVals, periods, mode, label) {
 
   const councilPath = _svgSegs(council, xf, yf).map((s) => `<polyline points="${s.join(" ")}" fill="none" stroke="#4C6A9C" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`).join("");
 
-  // end label: latest non-null
+  // council end label (latest non-null)
   let lastI = -1;
   (council || []).forEach((v, i) => { if (v != null) lastI = i; });
+  let councilEndY = null;
   let endLabel = "";
   if (lastI >= 0) {
     const lv = council[lastI];
+    councilEndY = yf(lv);
     const txt = useRank ? `#${lv}` : fmtQolVal(f, lv);
-    endLabel = `<text x="${(xf(lastI) + 5).toFixed(1)}" y="${(yf(lv) + 3.5).toFixed(1)}" font-size="11" font-weight="700" fill="#4C6A9C">${txt}</text>`;
+    endLabel = `<text x="${(xf(lastI) + 5).toFixed(1)}" y="${(councilEndY + 3.5).toFixed(1)}" font-size="11" font-weight="700" fill="#4C6A9C">${txt}</text>`;
   }
+
+  // benchmark end label — same x, so the magnitude gap between the two is visible
+  let benchLabel = "";
+  if (useRank) {
+    const medRank = (QOL_N + 1) / 2;
+    benchLabel = `<text x="${(padL + iw + 5).toFixed(1)}" y="${(yf(medRank) + 3.5).toFixed(1)}" font-size="10" fill="#8a8a8a">median #${Math.round(medRank)}</text>`;
+  } else if (bench) {
+    let bLastI = -1;
+    (bench || []).forEach((v, i) => { if (v != null) bLastI = i; });
+    if (bLastI >= 0) {
+      const bv = bench[bLastI];
+      let by = yf(bv);
+      if (councilEndY != null && Math.abs(by - councilEndY) < 12) by = councilEndY + 12; // avoid overlap
+      benchLabel = `<text x="${(xf(bLastI) + 5).toFixed(1)}" y="${(by + 3.5).toFixed(1)}" font-size="10" fill="#8a8a8a">${fmtQolVal(f, bv)}</text>`;
+    }
+  }
+
+  // Direction cue: is a higher or lower line the good outcome?
+  const betterTxt = f.lowerBetter ? "lower = better" : "higher = better";
 
   const x0 = periods[0], x1 = periods[nPts - 1];
   return `
     <div class="qol-trend-card">
       <div class="qol-trend-head">
         <span class="qol-trend-name">${f.label}</span>
+        <span class="qol-trend-good">${betterTxt}</span>
       </div>
       <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${f.label} trend">
-        ${grid}${benchPath}${councilPath}${endLabel}
+        ${grid}${benchPath}${councilPath}${endLabel}${benchLabel}
       </svg>
       <div class="qol-trend-foot"><span>${x0}</span><span>${x1}</span></div>
     </div>`;

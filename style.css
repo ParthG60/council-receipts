@@ -1800,3 +1800,8 @@ body.modal-open { overflow: hidden; }
 .qol-trend-legend .ql-swatch { width: 22px; height: 0; display: inline-block; }
 .qol-trend-legend .ql-council { border-top: 2.5px solid #4C6A9C; }
 .qol-trend-legend .ql-bench { border-top: 1.5px dashed #9a9a9a; }
+
+.qol-trend-good {
+  font-family: var(--mono); font-size: 0.62rem; color: #9a9a9a;
+  letter-spacing: 0.02em; white-space: nowrap;
+}
