@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261012h">
+<link rel="stylesheet" href="style.css?v=20261019a">
 </head>
 <body>
 <div class="container">
@@ -65,10 +65,11 @@
         <section class="panel" id="panel-population">
           <h2>Population <span class="prov prov-official" title="ONS mid-2024 population estimates">Official · ONS</span></h2>
           <div class="big-number" id="population-headline"></div>
-          <p class="caption">Source: ONS mid-2024 population estimates.</p>
+          <p class="caption">Headline population: ONS mid-2024 estimates.</p>
+          <h3 class="panel-subhead" id="ethnicity-subhead">Ethnicity profile vs England</h3>
           <div class="key-line" id="race-key"></div>
           <div id="race-chart"></div>
-          <p class="caption" id="ethnicity-caption">Ethnicity, Census 2021 (ONS).</p>
+          <p class="caption" id="ethnicity-caption">Ethnicity: ONS Annual Population Survey (2025/26).</p>
         </section>
 
         <section class="panel" id="panel-age">
@@ -112,6 +113,13 @@
         <div id="finances-body" class="stat-grid"></div>
         <p class="finances-synth" id="finances-synth"></p>
         <p class="caption" id="finances-caption">Source: MHCLG Section 114 &amp; Exceptional Financial Support registers (2024–2026); MHCLG Quarterly Borrowing &amp; Investment Live Table (latest quarter). Total outstanding borrowing across all loan and securities categories. Per-resident uses ONS mid-2024 population.</p>
+      </section>
+
+      <section class="panel" id="panel-audit">
+        <h2>Audit &amp; governance <span class="prov prov-direct" title="Council Gateway: the council's audit-committee papers and minutes">Direct record · Gateway</span></h2>
+        <p class="lede" id="audit-lede">Who watches the money. The audit committee signs off the accounts and the internal-audit opinion, and is usually where financial trouble surfaces first.</p>
+        <div id="audit-body"></div>
+        <p class="caption" id="audit-caption">Source: Council Gateway (the council's published audit-committee papers and minutes). "Papers mentioning" counts audit-committee documents that contain the phrase, not the number of occurrences.</p>
       </section>
 
       <section class="panel" id="panel-contracts">
@@ -240,6 +248,15 @@
       <h2>National Quality of Life League Table</h2>
       <p class="caption">Click any column header to sort. Use search box to quickly find your council.</p>
       <div class="league-controls">
+        <div class="toggle-group" id="league-mode">
+          <button class="toggle-btn active" data-mode="value">Latest values</button>
+          <button class="toggle-btn" data-mode="change">Rank change</button>
+        </div>
+        <div class="toggle-group" id="league-window" style="display:none;">
+          <button class="toggle-btn" data-window="3">3 yrs</button>
+          <button class="toggle-btn active" data-window="5">5 yrs</button>
+          <button class="toggle-btn" data-window="max">Max</button>
+        </div>
         <div class="toggle-group" id="league-toggle">
           <button class="toggle-btn active" data-n="10">Top 10</button>
           <button class="toggle-btn" data-n="25">Top 25</button>
@@ -386,6 +403,6 @@
 </div>
 
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js" defer></script>
-<script src="app.js?v=20261012h" defer></script>
+<script src="app.js?v=20261019a" defer></script>
 </body>
 </html>

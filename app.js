@@ -416,6 +416,7 @@ function renderCouncil(name) {
   renderMoneyChart(c);
   renderTalkVsSpend(c);
   renderFinances(c);
+  renderAudit(c);
   renderContracts(c);
   renderQoL(c);
   renderDocumentSearch(c);
@@ -505,7 +506,7 @@ let qolHistoryPromise = null;
 function loadQolHistory() {
   if (QOL_HISTORY) return Promise.resolve(QOL_HISTORY);
   if (qolHistoryPromise) return qolHistoryPromise;
-  qolHistoryPromise = fetch("qol_history.json?v=20261012h")
+  qolHistoryPromise = fetch("qol_history.json?v=20261019a")
     .then((r) => r.json())
     .then((d) => { QOL_HISTORY = d; return d; })
     .catch(() => (QOL_HISTORY = null));
@@ -673,6 +674,15 @@ function renderStandout(c) {
     }
   }
 
+  // Procurement concentration — one supplier dominating recent awards.
+  const ctr = c.contracts || [];
+  if (ctr.length >= 3) {
+    const ctot = ctr.reduce((s, r) => s + (r.value_gbp || 0), 0);
+    const topC = ctr[0];
+    if (ctot >= 5_000_000 && (topC.value_gbp || 0) / ctot >= 0.4)
+      badges.push({ cls: "warn", icon: "🧾", text: `Supplier concentration: ${topC.supplier} holds ${Math.round((topC.value_gbp / ctot) * 100)}% of recent awards` });
+  }
+
   // Talk-vs-spend disconnect (the "receipts" check) — discretionary services only,
   // and only when the gap is unusually large nationally (top 20%).
   const tvs = (c.talk_vs_spend && c.talk_vs_spend.topics) || [];
@@ -805,11 +815,11 @@ function buildCitizenBriefing(c) {
   }
 
   L.push("## Ask");
-  L.push(`You are advising a local resident on this council. Using ONLY the verified figures and peer benchmarks above (outcome comparisons are against the median of ${label}, the active comparison group):`);
-  L.push("1. Give three sharp, specific questions I can put to my councillor at their next surgery, grounded in the gap between this council and the group median or in its debt rank.");
-  L.push("2. Identify the single biggest fiscal or governance risk visible in these figures, contrasting debt, budget concentration and outcomes against the benchmarks.");
-  L.push(`3. Summarise how this area compares with ${label}, and flag where the commuter-inflation or schools-grant caveats apply.`);
-  L.push("If a question needs data not provided here (such as usable reserves or Ofsted/inspection grades), say explicitly what is missing rather than guessing.");
+  L.push(`I live in this council area. Using only the verified figures above (comparisons are against the median of ${label}, the group you're benchmarking against), help me understand how it's doing:`);
+  L.push("1. Give me two or three straight questions I can put to my councillor at their next surgery or in an email, grounded in the specific numbers. Point to where our debt per head or an outcome rank lags the peer group.");
+  L.push("2. Where is this council quietly running into trouble? Look across the debt, budget concentration and quality-of-life trends, and flag what a resident or local reporter should keep an eye on.");
+  L.push(`3. In plain terms, where does it genuinely do well and where is it falling behind versus ${label}? Keep it balanced, and note where commuter and nightlife footfall inflates the crime figures or where the schools grant distorts the spending picture.`);
+  L.push("If an answer needs figures not shown here (usable reserves, Ofsted grades, and so on), say plainly what's missing rather than guessing.");
   return L.join("\n");
 }
 
@@ -982,28 +992,66 @@ function contractsFinderUrl(q) {
     encodeURIComponent(q) + "&sort=relevance";
 }
 
+function renderAudit(c) {
+  const a = c.audit;
+  const has = a && a.committee_name;
+  showPanel("panel-audit", !!has);
+  if (!has) return;
+  const box = el("audit-body");
+  if (!box) return;
+  const dateTxt = a.latest_date ? a.latest_date.replace(/-/g, "/") : null;
+  let html = `<div class="audit-head"><div class="audit-committee">${a.committee_name}</div>`;
+  if (dateTxt) {
+    const link = a.latest_url
+      ? `<a href="${a.latest_url}" target="_blank" rel="noopener">latest meeting ${dateTxt}</a>`
+      : `latest meeting ${dateTxt}`;
+    html += `<div class="audit-latest">${link}</div>`;
+  }
+  html += `</div>`;
+  const flags = a.flags || [];
+  if (flags.length) {
+    html += `<ul class="audit-flags">` + flags.map((f) => {
+      const link = f.url ? ` <a href="${f.url}" target="_blank" rel="noopener">see a paper →</a>` : "";
+      return `<li><strong>${f.label}</strong> — ${f.n} paper${f.n === 1 ? "" : "s"} mention it${link}</li>`;
+    }).join("") + `</ul>`;
+  } else {
+    html += `<p class="audit-clean">No Section 24 reports, statutory recommendations or disclaimed opinions found in this council's indexed audit papers.</p>`;
+  }
+  box.innerHTML = html;
+}
+
 function renderContracts(c) {
   const rows = c.contracts;
   showPanel("panel-contracts", !!(rows && rows.length));
   if (!rows || !rows.length) return;
   const total = rows.reduce((s, r) => s + (r.value_gbp || 0), 0);
+  const suppIdx = DATA.supplier_index || {};
+  const top = rows[0];
+  const topShare = total > 0 ? (top.value_gbp || 0) / total : 0;
+  const concentrated = rows.length >= 3 && topShare >= 0.4 && total >= 5_000_000;
   const body = rows.map((r) => {
     const href = r.url || contractsFinderUrl(r.supplier);
     const titleAttr = r.title ? ` title="${r.title.replace(/"/g, "&quot;")}"` : "";
+    const n = suppIdx[r.supplier];
+    const tag = n ? `<span class="sup-national" title="Appears among the top contract awards of ${n} councils">national · ${n} councils</span>` : "";
     return `
     <tr>
-      <td><a href="${href}" target="_blank" rel="noopener"${titleAttr}>${r.supplier}</a>${r.title ? `<div class="contract-title">${r.title}</div>` : ""}</td>
+      <td><a href="${href}" target="_blank" rel="noopener"${titleAttr}>${r.supplier}</a>${tag}${r.title ? `<div class="contract-title">${r.title}</div>` : ""}</td>
       <td class="num-cell"><span title="${fmtGbpFull(r.value_gbp)}">${fmtAward(r.value_gbp)}</span></td>
       <td class="num-cell">${r.latest ? r.latest.replace(/-/g, "/") : "—"}</td>
     </tr>`;
   }).join("");
   const councilQuery = currentCouncilName || "";
+  const concNote = concentrated
+    ? `<p class="contracts-conc">Concentration flag: <strong>${top.supplier}</strong> alone holds ${Math.round(topShare * 100)}% of the awards shown (${fmtAward(top.value_gbp)}).</p>`
+    : "";
   el("contracts-body").innerHTML = `
     <table class="league contracts-table">
       <thead><tr><th>Supplier</th><th class="num-th">Awarded value</th><th class="num-th">Awarded</th></tr></thead>
       <tbody>${body}</tbody>
     </table>
     <p class="contracts-total">Combined value of the awards shown: <strong>${fmtAward(total)}</strong> <span class="contracts-window">(awards dated 2025–2026)</span></p>
+    ${concNote}
     <p class="contracts-note">Each row is a single contract award; the supplier links to that award notice on Contracts Finder (the UK government's public register). Values are as published and can include multi-year frameworks. Only awards where <strong>the council itself</strong> is the named buyer are shown — procurement by arms-length bodies (housing ALMOs such as Barnet Homes, council-owned trading companies, joint waste partnerships) publishes under those entities' own names and is not counted here. <a href="${contractsFinderUrl(councilQuery + " Council")}" target="_blank" rel="noopener">See all ${councilQuery} awards →</a></p>`;
 }
 
@@ -1018,11 +1066,15 @@ function renderPopulation(c) {
 
   const hasEth = !!c.ethnicity;
   const chartEl = el("race-chart");
+  const subhead = el("ethnicity-subhead");
   if (!hasEth) {
     chartEl.innerHTML = "";
     el("race-key").innerHTML = "";
+    if (subhead) subhead.style.display = "none";
+    el("ethnicity-caption").textContent = "";
     return;
   }
+  if (subhead) subhead.style.display = "";
   const cats = Object.keys(c.ethnicity);
   const councilVals = cats.map((k) => c.ethnicity[k]);
   const hasEngland = !!c.ethnicity_england;
@@ -1044,7 +1096,7 @@ function renderPopulation(c) {
   }));
 
   el("race-key").innerHTML = hasEngland ? swatch(ACCENT, "This council") + " &nbsp; " + swatch(GREY, "England") : swatch(ACCENT, "This council");
-  el("ethnicity-caption").textContent = c.ethnicity_source || "Ethnicity, Census 2021 (ONS)";
+  el("ethnicity-caption").textContent = "Ethnicity: " + (c.ethnicity_source || "ONS Census 2021") + ".";
 
   const mob = isMobile();
   Plotly.newPlot(
@@ -1858,6 +1910,49 @@ function renderPartyChart(chartId, keyId, groups, shareKey) {
 let leagueSort = null;
 let leagueTopN = 10;
 let leagueSearchQuery = "";
+let leagueMode = "value";   // "value" | "change"
+let leagueWindow = 5;       // 3 | 5 | "max"
+
+const LEAGUE_COLS = [
+  { key: "council", label: "Council", unit: "" },
+  { key: "control", label: "Control", unit: "" },
+  { key: "life_expectancy", label: "Life Exp.", unit: " yrs" },
+  { key: "attainment8", label: "GCSE Score", unit: " pts" },
+  { key: "rent_affordability", label: "Rent Afford.", unit: "%" },
+  { key: "child_poverty_pct", label: "Child Poverty", unit: "%" },
+  { key: "claimant_rate_pct", label: "Claimant %", unit: "%" },
+  { key: "air_quality_pm25_pct", label: "Air Quality", unit: "%" },
+  { key: "crime_per_1000", label: "Crime / 1k", unit: "" },
+  { key: "house_earnings", label: "House / Earnings", unit: "×" },
+];
+
+// National-rank movement for one council/metric over the selected window.
+// Ranks are 1 = best, so a fall in the rank number is an improvement.
+function leagueRankChange(ons, metric, years) {
+  const h = QOL_HISTORY;
+  if (!h || !h.councils) return null;
+  const s = h.councils[ons] && h.councils[ons][metric];
+  if (!s || !Array.isArray(s.r)) return null;
+  const periods = (h.metrics[metric] && h.metrics[metric].periods) || [];
+  const r = s.r;
+  let lastI = -1;
+  r.forEach((v, i) => { if (v != null) lastI = i; });
+  if (lastI < 0) return null;
+  let baseI;
+  if (years === "max") {
+    baseI = r.findIndex((v) => v != null);
+  } else {
+    const targetYear = (periods[lastI] || 0) - years;
+    baseI = -1;
+    for (let i = 0; i <= lastI; i++) {
+      if (r[i] != null && (periods[i] || 0) >= targetYear) { baseI = i; break; }
+    }
+    if (baseI < 0) baseI = r.findIndex((v) => v != null);
+  }
+  if (baseI < 0 || baseI >= lastI) return null;
+  return { delta: r[baseI] - r[lastI], from: r[baseI], to: r[lastI],
+           fromYear: periods[baseI], toYear: periods[lastI] };
+}
 
 function renderLeagueTable() {
   const lt = DATA.league_table;
@@ -1869,8 +1964,6 @@ function renderLeagueTable() {
     return;
   }
   if (!leagueSort) leagueSort = { col: "life_expectancy", asc: false };
-  el("league-caption").textContent =
-    "Ranked by Quality of Life indicators across England. Click any column header to re-sort. Filter rows by council name using the search bar.";
 
   // Wire search input
   const searchInput = el("league-search");
@@ -1879,6 +1972,39 @@ function renderLeagueTable() {
     searchInput.addEventListener("input", (e) => {
       leagueSearchQuery = (e.target.value || "").trim().toLowerCase();
       drawLeagueTable(lt);
+    });
+  }
+
+  // Wire mode toggle (latest values vs rank change)
+  const modeTog = el("league-mode");
+  if (modeTog && !modeTog.dataset.wired) {
+    modeTog.dataset.wired = "1";
+    modeTog.querySelectorAll(".toggle-btn").forEach((btn) => {
+      btn.onclick = () => {
+        modeTog.querySelectorAll(".toggle-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        leagueMode = btn.dataset.mode;
+        if (leagueMode === "change" && leagueSort.col !== "council" && leagueSort.col !== "control") {
+          leagueSort.asc = false;
+        }
+        const winTog = el("league-window");
+        if (winTog) winTog.style.display = leagueMode === "change" ? "" : "none";
+        drawLeagueTable(lt);
+      };
+    });
+  }
+
+  // Wire date-window toggle (only meaningful in rank-change mode)
+  const winTog = el("league-window");
+  if (winTog && !winTog.dataset.wired) {
+    winTog.dataset.wired = "1";
+    winTog.querySelectorAll(".toggle-btn").forEach((btn) => {
+      btn.onclick = () => {
+        winTog.querySelectorAll(".toggle-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        leagueWindow = btn.dataset.window === "max" ? "max" : Number(btn.dataset.window);
+        drawLeagueTable(lt);
+      };
     });
   }
 
@@ -1897,6 +2023,8 @@ function renderLeagueTable() {
   }
 
   drawLeagueTable(lt);
+  // Rank-change mode needs the history payload; redraw once it lands.
+  loadQolHistory().then(() => { if (leagueMode === "change") drawLeagueTable(lt); });
 }
 
 function shortenControl(s) {
@@ -1910,10 +2038,19 @@ function shortenControl(s) {
 
 function sortedLeagueRows(lt) {
   const { col, asc } = leagueSort;
+  const isChange = leagueMode === "change" && col !== "council" && col !== "control";
   let rows = lt.rows.slice();
 
+  const valOf = (r) => {
+    if (isChange) {
+      const rc = leagueRankChange(r.ons_code, col, leagueWindow);
+      return rc ? rc.delta : null;
+    }
+    return r[col];
+  };
+
   rows.sort((a, b) => {
-    let av = a[col], bv = b[col];
+    let av = valOf(a), bv = valOf(b);
     if (av == null && bv == null) return 0;
     if (av == null) return 1;
     if (bv == null) return -1;
@@ -1924,18 +2061,12 @@ function sortedLeagueRows(lt) {
 }
 
 function drawLeagueTable(lt) {
-  const cols = [
-    { key: "council", label: "Council", unit: "" },
-    { key: "control", label: "Control", unit: "" },
-    { key: "life_expectancy", label: "Life Exp.", unit: " yrs" },
-    { key: "attainment8", label: "GCSE Score", unit: " pts" },
-    { key: "rent_affordability", label: "Rent Afford.", unit: "%" },
-    { key: "child_poverty_pct", label: "Child Poverty", unit: "%" },
-    { key: "claimant_rate_pct", label: "Claimant %", unit: "%" },
-    { key: "air_quality_pm25_pct", label: "Air Quality", unit: "%" },
-    { key: "crime_per_1000", label: "Crime / 1k", unit: "" },
-    { key: "house_earnings", label: "House / Earnings", unit: "×" },
-  ];
+  const cols = LEAGUE_COLS;
+  const isChange = leagueMode === "change";
+
+  el("league-caption").textContent = isChange
+    ? "Movement in national rank over the selected window (green = improved, red = fell). Rank 1 is best, so gaining places is good. Click a header to sort by who moved most; metrics with shorter histories use their earliest available year."
+    : "Ranked by Quality of Life indicators across England. Click any column header to re-sort. Filter rows by council name using the search bar.";
 
   // 1. Sort all rows and assign global sort rank
   const allSorted = sortedLeagueRows(lt);
@@ -1961,6 +2092,14 @@ function drawLeagueTable(lt) {
           const short = shortenControl(val);
           return `<td class="control-cell" title="${val ?? ''}">${short}</td>`;
         }
+        if (isChange) {
+          const rc = leagueRankChange(r.ons_code, col.key, leagueWindow);
+          if (!rc) return `<td class="num-cell">—</td>`;
+          const cls = rc.delta > 0 ? "delta-up" : rc.delta < 0 ? "delta-down" : "delta-flat";
+          const txt = rc.delta === 0 ? "0" : (rc.delta > 0 ? "▲ +" : "▼ ") + Math.abs(rc.delta);
+          const tip = `${col.label}: #${rc.from} (${rc.fromYear}) → #${rc.to} (${rc.toYear})`;
+          return `<td class="num-cell ${cls}" title="${tip}">${txt}</td>`;
+        }
         if (val == null) return `<td class="num-cell">—</td>`;
         return `<td class="num-cell">${val}${col.unit}</td>`;
       });
@@ -1975,7 +2114,8 @@ function drawLeagueTable(lt) {
         const active = leagueSort.col === col.key;
         const arrow = active ? (leagueSort.asc ? " ▲" : " ▼") : "";
         const isNum = col.key !== "council" && col.key !== "control";
-        return `<th data-col="${col.key}" class="sortable${active ? " sorted" : ""}${isNum ? " num-th" : ""}">${col.label}${arrow}</th>`;
+        const label = isChange && isNum ? col.label + " Δ" : col.label;
+        return `<th data-col="${col.key}" class="sortable${active ? " sorted" : ""}${isNum ? " num-th" : ""}">${label}${arrow}</th>`;
       })
       .join("");
 
@@ -1991,6 +2131,8 @@ function drawLeagueTable(lt) {
       const col = th.dataset.col;
       if (leagueSort.col === col) {
         leagueSort.asc = !leagueSort.asc;
+      } else if (isChange) {
+        leagueSort = { col, asc: false };
       } else {
         const higherIsBetter = col === "life_expectancy" || col === "attainment8";
         leagueSort = { col, asc: higherIsBetter ? false : (col === "council" || col === "control") };
@@ -2052,7 +2194,7 @@ let globalIndexPromise = null;
 
 function loadGlobalIndex() {
   if (globalIndexPromise) return globalIndexPromise;
-  globalIndexPromise = fetch("search_index_global.json?v=20261012h")
+  globalIndexPromise = fetch("search_index_global.json?v=20261019a")
     .then((r) => r.json())
     .then((d) => { globalIndex = d; return d; })
     .catch(() => { globalIndex = {}; return {}; });
@@ -2243,7 +2385,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261012h")
+  fetch("data.json?v=20261019a")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;

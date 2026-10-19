@@ -154,6 +154,28 @@ def dossier(name, c):
             L.append(line)
         L.append("")
 
+    audit = c.get("audit") or {}
+    if audit.get("committee_name"):
+        L.append("## Audit & governance")
+        line = f"- Committee: {audit['committee_name']}"
+        if audit.get("latest_date"):
+            line += f" (latest meeting {audit['latest_date']}"
+            if audit.get("latest_url"):
+                line += f": {audit['latest_url']}"
+            line += ")"
+        L.append(line)
+        flags = audit.get("flags") or []
+        if flags:
+            for f in flags:
+                s = f"- Papers mentioning {f.get('label')}: {f.get('n', '?')}"
+                if f.get("url"):
+                    s += f" (e.g. {f['url']})"
+                L.append(s)
+        else:
+            L.append("- No Section 24 reports, statutory recommendations or disclaimed opinions "
+                     "found in this council's indexed audit papers.")
+        L.append("")
+
     official = c.get("official_links") or []
     news = c.get("reading_links") or []
     if official or news:
@@ -166,16 +188,19 @@ def dossier(name, c):
         L.append("")
 
     L.append("## Ask")
-    L.append("You are advising a local resident on this council. Using ONLY the verified figures and "
-             "peer benchmarks above (outcome comparisons are against the median English council, not the national aggregate):")
-    L.append("1. Give three sharp, specific questions I can put to my councillor at their next surgery, "
-             "grounded in the gap between this council and the median council or in its debt rank.")
-    L.append("2. Identify the single biggest fiscal or governance risk visible in these figures, "
-             "contrasting debt, budget concentration and outcomes against the benchmarks.")
-    L.append("3. Summarise how this area compares with England overall, and flag where the "
-             "commuter-inflation, discretionary-services or schools-grant caveats apply.")
-    L.append("If a question needs data not provided here (such as usable reserves or inspection grades), "
-             "say explicitly what is missing rather than guessing.")
+    L.append("I live in this council area. Using only the verified figures above "
+             "(comparisons are against the median English council), help me understand how it's doing:")
+    L.append("1. Give me two or three straight questions I can put to my councillor at their next surgery "
+             "or in an email, grounded in the specific numbers. Point to where our debt per head or an "
+             "outcome rank lags the peer group.")
+    L.append("2. Where is this council quietly running into trouble? Look across the debt, budget "
+             "concentration and quality-of-life trends, and flag what a resident or local reporter should "
+             "keep an eye on.")
+    L.append("3. In plain terms, where does it genuinely do well and where is it falling behind versus "
+             "England? Keep it balanced, and note where commuter and nightlife footfall inflates the crime "
+             "figures or where the schools grant distorts the spending picture.")
+    L.append("If an answer needs figures not shown here (usable reserves, Ofsted grades, and so on), say "
+             "plainly what's missing rather than guessing.")
     return "\n".join(L) + "\n"
 
 

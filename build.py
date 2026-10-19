@@ -25,6 +25,7 @@ Sources, all joined on ons_code unless noted:
 Every panel degrades: a council with no input for a panel is simply omitted from it.
 Reads only; writes only site/data.json. Idempotent. Run: python site/build.py
 """
+import ast
 import json
 import re
 import sys
@@ -417,6 +418,34 @@ def load_contracts():
     return out
 
 
+def load_audit():
+    """{ons_code: {committee_name, latest_date, latest_url, flags}} from audit_scan.csv."""
+    df = read_csv_optional(ENG_DIR / "audit_scan.csv")
+    if df is None:
+        return {}
+    out = {}
+    for _, r in df.iterrows():
+        flags = r.get("flags")
+        if isinstance(flags, str) and flags:
+            try:
+                flags = json.loads(flags)
+            except Exception:
+                try:
+                    flags = ast.literal_eval(flags)
+                except Exception:
+                    flags = []
+        elif not isinstance(flags, list):
+            flags = []
+        out[r["ons_code"]] = {
+            "committee_name": r.get("committee_name") if isinstance(r.get("committee_name"), str) else None,
+            "latest_date": r.get("latest_date") if isinstance(r.get("latest_date"), str) else None,
+            "latest_url": r.get("latest_url") if isinstance(r.get("latest_url"), str) else None,
+            "n_meetings": int(r["n_meetings"]) if pd.notna(r.get("n_meetings")) else None,
+            "flags": flags,
+        }
+    return out
+
+
 def load_portals():
     """{ons_code: {portal_url, official_name}} from data_england/council_portals.csv."""
     df = read_csv_optional(ENG_DIR / "council_portals.csv")
@@ -472,6 +501,21 @@ def load_house_earnings(reg):
     return out, eng
 
 
+def supplier_index(contracts, min_councils=4):
+    """{supplier: number of councils whose top-supplier list includes it}.
+
+    Surfaces national contractors (Veolia, Capita, Serco...) that show up across
+    many authorities. Only suppliers seen in >= min_councils councils are kept,
+    to keep the payload small and the flag meaningful."""
+    counts = {}
+    for recs in contracts.values():
+        for r in recs:
+            s = r.get("supplier")
+            if s:
+                counts[s] = counts.get(s, 0) + 1
+    return {s: n for s, n in counts.items() if n >= min_councils}
+
+
 def borrowing_england(borrowing, population):
     """England borrowing benchmarks + per-council rank (1 = most indebted)."""
     per = {}
@@ -521,11 +565,13 @@ def main():
     borrowing = load_borrowing()                               # ons -> {total_gbp_m}
     contracts = load_contracts()                               # ons -> [suppliers]
     portal_by_ons = load_portals()                             # ons -> official committee portal
+    audit_by_ons = load_audit()                                # ons -> audit committee scan
 
     pop_df = read_csv_optional(ENG_DIR / "population_all.csv")
     population = dict(zip(pop_df["ons_code"], pop_df["population"])) if pop_df is not None else {}
 
     borrow_eng, borrow_rank = borrowing_england(borrowing, population)
+    supp_index = supplier_index(contracts)                      # national contractors
 
     # Shire District -> Parent County & Authority Class lookup
     lad2cty_df = read_csv_optional(ENG_DIR / "lad_to_county_2023.csv")
@@ -943,6 +989,7 @@ def main():
                            "rank": borrow_rank.get(code)}
                           if bor and bor.get("total_gbp_m") is not None else None),
             "contracts": contracts.get(code),
+            "audit": audit_by_ons.get(code),
         }
 
     data = {
@@ -958,6 +1005,7 @@ def main():
         "qol_england": qol_england,
         "qol_benchmark": qol_benchmark,
         "borrowing_england": borrow_eng,
+        "supplier_index": supp_index,
         "distress_watchlist": distress_watchlist,
         "age_bands_mode": age_mode,
         "age_bands_order": AGE_BAND_ORDER,

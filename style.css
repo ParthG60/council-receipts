@@ -398,6 +398,19 @@ header .tagline em {
   margin: 2px 0 10px;
 }
 
+.panel-subhead {
+  font-family: var(--sans, inherit);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin: 20px 0 4px;
+  letter-spacing: 0.01em;
+}
+
+.num-cell.delta-up { color: #15803d; font-weight: 700; }
+.num-cell.delta-down { color: #b91c1c; font-weight: 700; }
+.num-cell.delta-flat { color: var(--faint); }
+
 .key-swatch {
   display: inline-block;
   width: 10px;
@@ -1516,6 +1529,65 @@ table.league tbody tr:hover { background: rgba(181, 55, 43, 0.04); }
 .contracts-window {
   font-size: 0.72rem;
   opacity: 0.75;
+}
+.sup-national {
+  display: inline-block;
+  margin-left: 7px;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #92400e;
+  background: #fef3c7;
+  border-radius: 3px;
+  padding: 1px 5px;
+  vertical-align: middle;
+}
+.contracts-conc {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: #92400e;
+  background: #fef3c7;
+  border-left: 3px solid #d97706;
+  padding: 6px 10px;
+  margin: 8px 0 0;
+  line-height: 1.45;
+}
+.audit-head { margin: 4px 0 10px; }
+.audit-committee {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.audit-latest {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+.audit-latest a { color: var(--stamp); }
+.audit-flags {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.audit-flags li {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  padding: 6px 10px;
+  background: #fef3c7;
+  border-left: 3px solid #d97706;
+  color: #7c2d12;
+}
+.audit-flags a { color: #7c2d12; text-decoration: underline; }
+.audit-clean {
+  font-size: 0.84rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0;
 }
 .links-subhead {
   list-style: none;
