@@ -416,7 +416,6 @@ function renderCouncil(name) {
   renderMoneyChart(c);
   renderTalkVsSpend(c);
   renderFinances(c);
-  renderAudit(c);
   renderContracts(c);
   renderQoL(c);
   renderDocumentSearch(c);
@@ -506,7 +505,7 @@ let qolHistoryPromise = null;
 function loadQolHistory() {
   if (QOL_HISTORY) return Promise.resolve(QOL_HISTORY);
   if (qolHistoryPromise) return qolHistoryPromise;
-  qolHistoryPromise = fetch("qol_history.json?v=20261019a")
+  qolHistoryPromise = fetch("qol_history.json?v=20261019b")
     .then((r) => r.json())
     .then((d) => { QOL_HISTORY = d; return d; })
     .catch(() => (QOL_HISTORY = null));
@@ -990,34 +989,6 @@ function renderFinances(c) {
 function contractsFinderUrl(q) {
   return "https://www.contractsfinder.service.gov.uk/Search/Results?&searchTerm=" +
     encodeURIComponent(q) + "&sort=relevance";
-}
-
-function renderAudit(c) {
-  const a = c.audit;
-  const has = a && a.committee_name;
-  showPanel("panel-audit", !!has);
-  if (!has) return;
-  const box = el("audit-body");
-  if (!box) return;
-  const dateTxt = a.latest_date ? a.latest_date.replace(/-/g, "/") : null;
-  let html = `<div class="audit-head"><div class="audit-committee">${a.committee_name}</div>`;
-  if (dateTxt) {
-    const link = a.latest_url
-      ? `<a href="${a.latest_url}" target="_blank" rel="noopener">latest meeting ${dateTxt}</a>`
-      : `latest meeting ${dateTxt}`;
-    html += `<div class="audit-latest">${link}</div>`;
-  }
-  html += `</div>`;
-  const flags = a.flags || [];
-  if (flags.length) {
-    html += `<ul class="audit-flags">` + flags.map((f) => {
-      const link = f.url ? ` <a href="${f.url}" target="_blank" rel="noopener">see a paper →</a>` : "";
-      return `<li><strong>${f.label}</strong> — ${f.n} paper${f.n === 1 ? "" : "s"} mention it${link}</li>`;
-    }).join("") + `</ul>`;
-  } else {
-    html += `<p class="audit-clean">No Section 24 reports, statutory recommendations or disclaimed opinions found in this council's indexed audit papers.</p>`;
-  }
-  box.innerHTML = html;
 }
 
 function renderContracts(c) {
@@ -2194,7 +2165,7 @@ let globalIndexPromise = null;
 
 function loadGlobalIndex() {
   if (globalIndexPromise) return globalIndexPromise;
-  globalIndexPromise = fetch("search_index_global.json?v=20261019a")
+  globalIndexPromise = fetch("search_index_global.json?v=20261019b")
     .then((r) => r.json())
     .then((d) => { globalIndex = d; return d; })
     .catch(() => { globalIndex = {}; return {}; });
@@ -2385,7 +2356,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261019a")
+  fetch("data.json?v=20261019b")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;

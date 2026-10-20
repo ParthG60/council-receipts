@@ -154,28 +154,6 @@ def dossier(name, c):
             L.append(line)
         L.append("")
 
-    audit = c.get("audit") or {}
-    if audit.get("committee_name"):
-        L.append("## Audit & governance")
-        line = f"- Committee: {audit['committee_name']}"
-        if audit.get("latest_date"):
-            line += f" (latest meeting {audit['latest_date']}"
-            if audit.get("latest_url"):
-                line += f": {audit['latest_url']}"
-            line += ")"
-        L.append(line)
-        flags = audit.get("flags") or []
-        if flags:
-            for f in flags:
-                s = f"- Papers mentioning {f.get('label')}: {f.get('n', '?')}"
-                if f.get("url"):
-                    s += f" (e.g. {f['url']})"
-                L.append(s)
-        else:
-            L.append("- No Section 24 reports, statutory recommendations or disclaimed opinions "
-                     "found in this council's indexed audit papers.")
-        L.append("")
-
     official = c.get("official_links") or []
     news = c.get("reading_links") or []
     if official or news:
