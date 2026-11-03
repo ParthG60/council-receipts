@@ -505,7 +505,7 @@ let qolHistoryPromise = null;
 function loadQolHistory() {
   if (QOL_HISTORY) return Promise.resolve(QOL_HISTORY);
   if (qolHistoryPromise) return qolHistoryPromise;
-  qolHistoryPromise = fetch("qol_history.json?v=20261019b")
+  qolHistoryPromise = fetch("qol_history.json?v=20261103a")
     .then((r) => r.json())
     .then((d) => { QOL_HISTORY = d; return d; })
     .catch(() => (QOL_HISTORY = null));
@@ -2165,7 +2165,7 @@ let globalIndexPromise = null;
 
 function loadGlobalIndex() {
   if (globalIndexPromise) return globalIndexPromise;
-  globalIndexPromise = fetch("search_index_global.json?v=20261019b")
+  globalIndexPromise = fetch("search_index_global.json?v=20261103a")
     .then((r) => r.json())
     .then((d) => { globalIndex = d; return d; })
     .catch(() => { globalIndex = {}; return {}; });
@@ -2356,7 +2356,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  fetch("data.json?v=20261019b")
+  fetch("data.json?v=20261103a")
     .then((r) => r.json())
     .then((data) => {
       DATA = data;
